@@ -96,12 +96,32 @@ export class OfflineAgentService {
     }
 
     const queryVec = await this.embedder.embed(params.content);
-    const hits = this.vectorStore.search(queryVec, 3);
-    const topScore = hits[0]?.score ?? 0;
+    const rawHits = this.vectorStore.search(queryVec, 8);
     const recentMessages = this.store.listChatMessages(session.id);
     const predictedCategory = this.intentPredictor
       ? this.intentPredictor(params.content)
       : undefined;
+
+    // 结合识别到的意图类别对检索结果重排，减少跨类别误命中（如物流时效误匹配退款到账天数）
+    const hits = rawHits
+      .map((h) => {
+        const categoryBoost =
+          predictedCategory && h.record.category === predictedCategory
+            ? 0.15
+            : 0;
+        const keywordBoost = computeKeywordOverlap(
+          params.content,
+          h.record.content
+        );
+        return {
+          ...h,
+          rerankScore: h.score + categoryBoost + keywordBoost,
+        };
+      })
+      .sort((a, b) => b.rerankScore - a.rerankScore)
+      .slice(0, 3);
+
+    const topScore = hits[0]?.score ?? 0;
 
     const decision = evaluateHandoffNeed({
       customerText: params.content,
@@ -131,11 +151,12 @@ export class OfflineAgentService {
       };
       this.store.upsertChatSession(session);
 
+      const guidance = buildHandoffGuidance(params.content, ticket.id, decision.reason);
       const handoffMessage: ChatMessage = {
         id: randomUUID(),
         sessionId: session.id,
         role: "system",
-        content: `已为您转接人工客服（原因：${decision.reason}），工单号：${ticket.id}`,
+        content: guidance,
         confidence: Number(topScore.toFixed(4)),
         feedback: null,
         createdAt: ticketTime,
@@ -162,11 +183,20 @@ export class OfflineAgentService {
       .map((c, idx) => `[参考${idx + 1}] ${c.snippet}`)
       .join("\n\n");
 
+    const historyMessages = recentMessages
+      .filter((m) => m.role === "customer" || m.role === "assistant")
+      .slice(-4)
+      .map((m) => ({
+        role: (m.role === "customer" ? "user" : "assistant") as "user" | "assistant",
+        content: m.content,
+      }));
+
     const llmReply = await this.llmClient.chat([
       {
         role: "system",
-        content: `你是专业、耐心的离线中文客服助手。请严格依据以下参考知识回答客户问题，不要编造未提及的规则：\n\n${contextBlock}`,
+        content: `你是专业、耐心的离线中文客服助手（当前识别意图：${predictedCategory ?? "general"}）。请严格依据以下参考知识回答客户问题，不要编造未提及的规则：\n\n${contextBlock}`,
       },
+      ...historyMessages,
       {
         role: "user",
         content: params.content,
@@ -254,4 +284,30 @@ export class OfflineAgentService {
   ): void {
     this.store.updateMessageFeedback(messageId, feedback);
   }
+}
+
+function computeKeywordOverlap(query: string, docText: string): number {
+  const tokens = query
+    .replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, "")
+    .split("");
+  if (tokens.length === 0) return 0;
+  let hits = 0;
+  for (let i = 0; i < tokens.length - 1; i += 1) {
+    const bigram = tokens[i] + tokens[i + 1];
+    if (docText.includes(bigram)) {
+      hits += 1;
+    }
+  }
+  return Math.min(0.3, hits * 0.08);
+}
+
+function buildHandoffGuidance(
+  customerText: string,
+  ticketId: string,
+  reason: string
+): string {
+  if (/质量|破损|坏了|瑕疵|投诉/.test(customerText)) {
+    return `非常抱歉给您带来不佳体验，我们高度重视您反馈的质量/投诉问题。\n已为您优先创建加急人工工单（${ticketId}，原因：${reason}）。\n建议您先准备好订单号与商品问题照片，人工专员接手后将第一时间为您核实赔付或退换处理。`;
+  }
+  return `已为您转接人工客服（工单号：${ticketId}，原因：${reason}），请稍候，人工专员正在接入。`;
 }

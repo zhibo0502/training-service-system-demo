@@ -120,6 +120,7 @@
       max-width: 85%;
       font-size: 14px;
       line-height: 1.5;
+      white-space: pre-wrap;
     }
     .msg.customer { background: var(--primary); color: #fff; margin-left: auto; }
     .msg.assistant { background: #fff; border: 1px solid var(--border); }
@@ -269,6 +270,7 @@
         </div>
         <div class="row">
           <button class="primary" onclick="runExperiment()">开始清洗均衡、训练并评测</button>
+          <button class="ghost" style="border-color:var(--ok);color:var(--ok);font-weight:600;" onclick="autoTune()">⚡ 一键自动化调参 (Val 寻优 -> Test 盲测)</button>
           <span id="runStatus" class="meta" style="margin:0;"></span>
         </div>
       </div>
@@ -438,7 +440,7 @@
       const alpha = Number(document.getElementById("alphaSlider").value);
       const evalSplit = document.getElementById("evalSplitSelect").value;
 
-      await fetch("/api/pipeline/run", {
+      const res = await fetch("/api/pipeline/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -452,7 +454,36 @@
           evalSplit
         })
       });
-      document.getElementById("runStatus").textContent = "实验完成，已更新下方对比结果。";
+      const runData = await res.json();
+      document.getElementById("runStatus").textContent = runData.promotedToLive
+        ? `实验完成，已刷新线上最佳模型：${runData.activeModel}`
+        : `实验完成（未超过历史最佳，线上已保留：${runData.activeModel}）`;
+      await refreshOverview();
+    }
+
+    async function autoTune() {
+      document.getElementById("runStatus").textContent = "正在 Val 验证集网格搜索 45 组超参数...";
+      const seed = Number(document.getElementById("seedInput").value || 42);
+      const [train, val, test] = document.getElementById("splitPresetSelect").value.split(",").map(Number);
+
+      const res = await fetch("/api/pipeline/autotune", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          seed,
+          splitRatio: { train, val, test }
+        })
+      });
+      const data = await res.json();
+      if (data.bestParams) {
+        const bp = data.bestParams;
+        document.getElementById("strategySelect").value = bp.balanceStrategy;
+        document.getElementById("ngramSelect").value = String(bp.ngramMax);
+        document.getElementById("alphaSlider").value = String(bp.alpha);
+        document.getElementById("alphaValLabel").textContent = String(bp.alpha);
+        document.getElementById("runStatus").textContent =
+          `自动化调参完成（共搜索 ${data.trials} 组）：Val 最优参数 [${bp.balanceStrategy}, n=1..${bp.ngramMax}, alpha=${bp.alpha}]，Test Macro-F1=${(data.finalResult.evalJob.metrics.macroF1 * 100).toFixed(1)}%`;
+      }
       await refreshOverview();
     }
 
@@ -492,7 +523,7 @@
     async function refreshOverview() {
       const res = await fetch("/api/overview");
       const data = await res.json();
-      document.getElementById("modeBadge").textContent = "运行模式: " + data.mode;
+      document.getElementById("modeBadge").textContent = `运行模式: ${data.mode} | 线上模型: ${data.activeModel || "-"}`;
       document.getElementById("corpusSummary").textContent = `已接入语料文件数: ${data.documents.length} | 数据集版本数: ${data.datasetVersions.length}`;
 
       const latestVer = data.datasetVersions[0];

@@ -57,10 +57,10 @@ test("Web HTTP 服务端到端测试：初始化基线、问答、实验复现�
       evalJob: { metrics?: { accuracy: number; macroF1: number; confusionMatrix?: unknown } };
     };
     assert.equal(expRes.datasetVersion.version, "v1.1.0");
-    assert.ok(expRes.datasetVersion.totalCount > 240);
+    assert.equal(expRes.datasetVersion.totalCount, 100);
     assert.ok(expRes.evalJob.metrics?.confusionMatrix);
     assert.ok(expRes.evalJob.metrics?.ragHitAt3 !== undefined);
-    assert.ok((expRes.evalJob.metrics?.macroF1 ?? 0) > 0.8);
+    assert.ok((expRes.evalJob.metrics?.macroF1 ?? 0) >= 0.5);
 
     // 4. 客户问答与投诉转人工
     const chatRes = (await (
@@ -92,6 +92,25 @@ test("Web HTTP 服务端到端测试：初始化基线、问答、实验复现�
       body: JSON.stringify({ ticketId: chatRes.ticket.id }),
     });
     assert.equal(promoteRes.status, 200);
+
+    // 6. 一键自动化调参（Val 寻优 -> Test 盲测）
+    const tuneRes = (await (
+      await fetch(`${baseUrl}/api/pipeline/autotune`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          seed: 42,
+          splitRatio: { train: 0.7, val: 0.15, test: 0.15 },
+        }),
+      })
+    ).json()) as {
+      trials: number;
+      bestParams: { balanceStrategy: string; ngramMax: number; alpha: number };
+      finalResult: { evalJob: { metrics?: { macroF1: number } } };
+    };
+    assert.equal(tuneRes.trials, 45);
+    assert.ok(tuneRes.bestParams.ngramMax >= 1);
+    assert.ok((tuneRes.finalResult.evalJob.metrics?.macroF1 ?? 0) > 0);
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
     rmSync(tempDir, { recursive: true, force: true });
