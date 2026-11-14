@@ -1,0 +1,7 @@
+node_modules
+.git
+data/demo.sqlite
+data/vectors.json
+data/uploads
+data/qa-review-queue.json
+data/feedback-qa.jsonl

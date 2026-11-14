@@ -7,3 +7,4 @@ export * from "./models/dataset.ts";
 export * from "./models/qa-sample.ts";
 export * from "./models/conversation.ts";
 export * from "./models/training.ts";
+export * from "./state-machines.ts";

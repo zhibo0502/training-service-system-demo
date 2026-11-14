@@ -322,10 +322,15 @@
               <th>Accuracy</th>
               <th>Macro-F1</th>
               <th>RAG Hit@3</th>
+              <th>版本治理</th>
             </tr>
           </thead>
           <tbody id="jobsBody"></tbody>
         </table>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0;">四、系统可观测性与运行时监控（/api/metrics）</h3>
+        <div id="metricsSummary" class="meta">正在加载运行时监控指标...</div>
       </div>
     </section>
 
@@ -345,6 +350,22 @@
             </tr>
           </thead>
           <tbody id="ticketsBody"></tbody>
+        </table>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0;">待审核 QA 反哺队列（质检通过后才入库训练）</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>类别</th>
+              <th>客户提问</th>
+              <th>人工回复</th>
+              <th>状态</th>
+              <th>审核操作</th>
+            </tr>
+          </thead>
+          <tbody id="qaReviewBody"></tbody>
         </table>
       </div>
     </section>
@@ -544,7 +565,29 @@
         body: JSON.stringify({ ticketId })
       });
       const data = await res.json();
-      alert(data.ok ? `已收录为【${data.category}】标准 QA 样本！前往工作台重新运行训练即可生效。` : `收录失败: ${data.error}`);
+      alert(data.ok ? `已提交至 QA 审核队列（${data.category}）！请在下方“待审核 QA 反哺队列”通过审核后入库。` : `提交失败: ${data.error}`);
+      await refreshOverview();
+    }
+
+    async function decideQaReview(id, decision) {
+      const res = await fetch("/api/qa-review/decide", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, decision })
+      });
+      const data = await res.json();
+      if (!data.ok) alert("审核操作失败: " + data.error);
+      await refreshOverview();
+    }
+
+    async function rollbackModel(jobId) {
+      const res = await fetch("/api/models/rollback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId })
+      });
+      const data = await res.json();
+      alert(data.ok ? `已回滚线上模型至: ${data.activeModel}` : `回滚失败: ${data.error}`);
       await refreshOverview();
     }
 
@@ -692,9 +735,37 @@
             <td>${j.metrics ? (j.metrics.accuracy * 100).toFixed(1) + "%" : "-"}</td>
             <td><strong>${j.metrics ? (j.metrics.macroF1 * 100).toFixed(1) + "%" : "-"}</strong></td>
             <td>${j.metrics && j.metrics.ragHitAt3 !== undefined ? (j.metrics.ragHitAt3 * 100).toFixed(1) + "%" : "-"}</td>
+            <td><button class="ghost" onclick="rollbackModel('${j.id}')">回滚上线</button></td>
           </tr>
         `;
       }).join("");
+
+      const [metricsRes, reviewRes] = await Promise.all([
+        fetch("/api/metrics"),
+        fetch("/api/qa-review/list"),
+      ]);
+      if (metricsRes.ok) {
+        const m = await metricsRes.json();
+        document.getElementById("metricsSummary").textContent =
+          `运行时长: ${m.uptimeSec}s | 总请求: ${m.totalRequests} | 对话数: ${m.chatRequests} | P95 延迟: ${m.p95LatencyMs}ms | 转人工率: ${(m.handoffRate * 100).toFixed(1)}% | 好评率: ${(m.positiveFeedbackRate * 100).toFixed(1)}% | 护栏拦截: ${m.guardrailTriggers} | 向量数: ${m.vectorCount} | 待审 QA: ${m.pendingQaReviewCount}`;
+      }
+      if (reviewRes.ok) {
+        const rData = await reviewRes.json();
+        document.getElementById("qaReviewBody").innerHTML = (rData.items || []).map(item => `
+          <tr>
+            <td>${item.id}</td>
+            <td>${item.category}</td>
+            <td>${escapeHtml(item.question)}</td>
+            <td>${escapeHtml(item.answer)}</td>
+            <td>${item.status}</td>
+            <td>
+              ${item.status === "pending_review"
+                ? `<div class="row"><button class="primary" onclick="decideQaReview('${item.id}', 'approve')">通过并入库</button><button class="ghost" onclick="decideQaReview('${item.id}', 'reject')">驳回</button></div>`
+                : "-"}
+            </td>
+          </tr>
+        `).join("");
+      }
 
       document.getElementById("ticketsBody").innerHTML = data.tickets.map(t => `
         <tr>

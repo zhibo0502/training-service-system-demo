@@ -9,13 +9,23 @@ import type {
 } from "@ts-qa/shared";
 import type { Embedder, LocalVectorStore } from "@ts-qa/trainer";
 import { evaluateHandoffNeed } from "./handoff-policy.ts";
+import { applyComplianceGuardrail } from "./guardrails.ts";
 import type { LlmClient } from "./llm-client.ts";
+import {
+  detectSubIntent,
+  extractOrderId,
+  lookupOrder,
+  type OrderInfo,
+} from "./order-tool.ts";
 
 export interface AgentReplyResult {
   session: ChatSession;
   customerMessage: ChatMessage;
   assistantMessage: ChatMessage;
   predictedCategory?: QaCategory;
+  subIntent?: string;
+  orderInfo?: OrderInfo;
+  guardrailTriggered?: boolean;
   ticket?: HandoffTicket;
 }
 
@@ -95,12 +105,35 @@ export class OfflineAgentService {
       return { session, customerMessage, assistantMessage: waitMsg };
     }
 
-    const queryVec = await this.embedder.embed(params.content);
-    const rawHits = this.vectorStore.search(queryVec, 8);
     const recentMessages = this.store.listChatMessages(session.id);
+    const prevCustomerMessages = recentMessages
+      .filter((m) => m.role === "customer" && m.id !== customerMessage.id)
+      .slice(-2);
+    const isShortFollowUp =
+      params.content.trim().length <= 16 ||
+      /^(这个|那个|它|单号|订单|怎么|那)/.test(params.content.trim());
+    const contextualQuery =
+      isShortFollowUp && prevCustomerMessages.length > 0
+        ? `${prevCustomerMessages[prevCustomerMessages.length - 1].content} ${params.content}`
+        : params.content;
+
+    const queryVec = await this.embedder.embed(contextualQuery);
+    const rawHits = this.vectorStore.search(queryVec, 8);
     const predictedCategory = this.intentPredictor
-      ? this.intentPredictor(params.content)
+      ? this.intentPredictor(contextualQuery)
       : undefined;
+    const subIntent = detectSubIntent(contextualQuery, predictedCategory);
+
+    // 订单/物流工具调用：优先从本轮或近两轮客户消息中提取订单号
+    const orderId =
+      extractOrderId(params.content) ??
+      prevCustomerMessages
+        .slice()
+        .reverse()
+        .map((m) => extractOrderId(m.content))
+        .find((id): id is string => Boolean(id)) ??
+      null;
+    const orderInfo = orderId ? lookupOrder(orderId) : undefined;
 
     // 结合识别到的意图类别对检索结果重排，减少跨类别误命中（如物流时效误匹配退款到账天数）
     const hits = rawHits
@@ -179,9 +212,13 @@ export class OfflineAgentService {
       snippet: h.record.content,
     }));
 
-    const contextBlock = citations
-      .map((c, idx) => `[参考${idx + 1}] ${c.snippet}`)
-      .join("\n\n");
+    const orderContext = orderInfo
+      ? `\n\n[订单系统实时查询] 订单号：${orderInfo.orderId}｜状态：${orderInfo.status}｜承运商：${orderInfo.carrier}（${orderInfo.trackingNo}）｜最新进展：${orderInfo.latestEvent}｜售后资格：${orderInfo.refundEligible ? "支持" : "不支持"}`
+      : "";
+
+    const contextBlock =
+      citations.map((c, idx) => `[参考${idx + 1}] ${c.snippet}`).join("\n\n") +
+      orderContext;
 
     const historyMessages = recentMessages
       .filter((m) => m.role === "customer" || m.role === "assistant")
@@ -194,7 +231,7 @@ export class OfflineAgentService {
     const llmReply = await this.llmClient.chat([
       {
         role: "system",
-        content: `你是专业、耐心的离线中文客服助手（当前识别意图：${predictedCategory ?? "general"}）。请严格依据以下参考知识回答客户问题，不要编造未提及的规则：\n\n${contextBlock}`,
+        content: `你是专业、耐心的离线中文客服助手（一级意图：${predictedCategory ?? "general"}，二级意图：${subIntent}）。请严格依据参考知识与订单实时查询结果回答客户问题，不要编造未提及的规则：\n\n${contextBlock}`,
       },
       ...historyMessages,
       {
@@ -203,12 +240,26 @@ export class OfflineAgentService {
       },
     ]);
 
+    let finalReplyText = llmReply.content;
+    if (orderInfo && !finalReplyText.includes(orderInfo.orderId)) {
+      finalReplyText = `【订单 ${orderInfo.orderId} 实时状态】${orderInfo.status}（${orderInfo.carrier} ${orderInfo.trackingNo}：${orderInfo.latestEvent}）。\n\n${finalReplyText}`;
+    } else if (
+      !orderInfo &&
+      (predictedCategory === "logistics" ||
+        predictedCategory === "refund" ||
+        predictedCategory === "complaint") &&
+      !finalReplyText.includes("订单号")
+    ) {
+      finalReplyText += "\n\n（如需查询具体订单进度，请直接发送订单号，例如 ORD-1001）";
+    }
+
+    const guardrail = applyComplianceGuardrail(finalReplyText);
     const replyTime = new Date().toISOString();
     const assistantMessage: ChatMessage = {
       id: randomUUID(),
       sessionId: session.id,
       role: "assistant",
-      content: llmReply.content,
+      content: guardrail.safeText,
       confidence: Number(topScore.toFixed(4)),
       citations,
       feedback: null,
@@ -227,6 +278,9 @@ export class OfflineAgentService {
       customerMessage,
       assistantMessage,
       predictedCategory,
+      subIntent,
+      orderInfo,
+      guardrailTriggered: guardrail.triggered,
     };
   }
 

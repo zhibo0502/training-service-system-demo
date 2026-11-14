@@ -3,4 +3,6 @@
  */
 export * from "./llm-client.ts";
 export * from "./handoff-policy.ts";
+export * from "./order-tool.ts";
+export * from "./guardrails.ts";
 export * from "./service.ts";

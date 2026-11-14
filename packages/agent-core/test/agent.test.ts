@@ -10,8 +10,12 @@ import {
   runRagIndexJob,
 } from "../../trainer/src/index.ts";
 import {
+  applyComplianceGuardrail,
+  detectSubIntent,
+  extractOrderId,
   FallbackAwareLlmClient,
   type LlmClient,
+  lookupOrder,
   OfflineAgentService,
   TemplateFallbackLlmClient,
 } from "../src/index.ts";
@@ -113,4 +117,20 @@ test("FallbackAwareLlmClient 在主模型不可用时自动降级为离线模板
   ]);
   assert.match(res.content, /7 天无理由退货/);
   assert.match(res.model, /offline-template-fallback \(fallback from qwen2\.5:3b\)/);
+});
+
+test("订单工具、二级意图识别与合规护栏拦截生效", () => {
+  assert.equal(extractOrderId("帮我查一下 ord-1001 的物流"), "ORD-1001");
+  const order = lookupOrder("ORD-1001");
+  assert.equal(order.carrier, "顺丰速运");
+
+  assert.equal(detectSubIntent("我想开发票怎么开", "consultation"), "invoice_request");
+  assert.equal(detectSubIntent("快递摔碎了咋赔偿", "complaint"), "damaged_compensation");
+
+  const guard = applyComplianceGuardrail(
+    "加我微信 13800138000 私下处理，无条件赔十倍！"
+  );
+  assert.equal(guard.triggered, true);
+  assert.ok(!guard.safeText.includes("13800138000"));
+  assert.ok(!guard.safeText.includes("无条件赔十倍"));
 });

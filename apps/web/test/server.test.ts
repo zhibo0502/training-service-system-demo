@@ -119,7 +119,20 @@ test("Web HTTP 服务端到端测试：初始化基线、问答、实验复现�
     assert.equal(tuneRes.bestParams.seedsEvaluated, 3);
     assert.ok(tuneRes.bestParams.ngramMax >= 1);
 
-    // 7. 导出当前最新数据集为 SFT 微调 JSONL 与语料源移除保护校验
+    // 7. 审核通过反哺 QA 样本后，支持导出 SFT 微调 JSONL 与移除默认演示语料
+    const reviewList = (await (
+      await fetch(`${baseUrl}/api/qa-review/list`)
+    ).json()) as { items: Array<{ id: string; status: string }> };
+    assert.ok(reviewList.items.length >= 1);
+    assert.equal(reviewList.items[0].status, "pending_review");
+
+    const decideRes = await fetch(`${baseUrl}/api/qa-review/decide`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: reviewList.items[0].id, decision: "approve" }),
+    });
+    assert.equal(decideRes.status, 200);
+
     const exportRes = await fetch(`${baseUrl}/api/dataset/export-finetune`);
     assert.equal(exportRes.status, 200);
     const exportedText = await exportRes.text();
@@ -147,6 +160,50 @@ test("Web HTTP 服务端到端测试：初始化基线、问答、实验复现�
     });
     assert.equal(usePresetRes.status, 200);
     assert.ok((tuneRes.finalResult.evalJob.metrics?.macroF1 ?? 0) > 0);
+
+    // 8. 生产化运维与治理闭环：健康探针、监控指标、订单工具与版本回滚
+    const healthRes = await fetch(`${baseUrl}/healthz`);
+    assert.equal(healthRes.status, 200);
+    const readyRes = await fetch(`${baseUrl}/readyz`);
+    assert.equal(readyRes.status, 200);
+
+    const orderChatRes = (await (
+      await fetch(`${baseUrl}/api/chat/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: "order-test-sess",
+          content: "帮我查一下 ORD-1001 物流到哪了",
+        }),
+      })
+    ).json()) as {
+      orderInfo?: { orderId: string; carrier: string };
+      subIntent?: string;
+      assistantMessage: { content: string };
+    };
+    assert.equal(orderChatRes.orderInfo?.orderId, "ORD-1001");
+    assert.equal(orderChatRes.subIntent, "courier_delay");
+    assert.match(orderChatRes.assistantMessage.content, /ORD-1001/);
+
+    const overviewForRollback = (await (
+      await fetch(`${baseUrl}/api/overview`)
+    ).json()) as { trainingJobs: Array<{ id: string; jobType: string }> };
+    const firstEvalJob = overviewForRollback.trainingJobs.find(
+      (j) => j.jobType === "intent_eval"
+    );
+    assert.ok(firstEvalJob);
+    const rollbackRes = await fetch(`${baseUrl}/api/models/rollback`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jobId: firstEvalJob.id }),
+    });
+    assert.equal(rollbackRes.status, 200);
+
+    const metricsRes = (await (
+      await fetch(`${baseUrl}/api/metrics`)
+    ).json()) as { chatRequests: number; auditLogs: unknown[] };
+    assert.ok(metricsRes.chatRequests >= 2);
+    assert.ok(metricsRes.auditLogs.length >= 2);
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
     rmSync(tempDir, { recursive: true, force: true });

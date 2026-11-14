@@ -15,7 +15,9 @@
     "test": "node --test packages/*/test/*.test.ts apps/*/test/*.test.ts",
     "synth-data": "node ./scripts/synth-and-train.ts",
     "eval-compare": "node ./scripts/eval-synth-vs-small.ts",
-    "build-bayes-data": "node ./scripts/build-bayes-corpus.ts"
+    "build-bayes-data": "node ./scripts/build-bayes-corpus.ts",
+    "build-hybrid-gold": "node ./scripts/build-hybrid-gold.ts",
+    "verify-fsm": "node ./scripts/verify-state-machines.ts"
   },
   "engines": {
     "node": ">=20.0.0"

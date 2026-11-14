@@ -1,8 +1,13 @@
+import { randomUUID } from "node:crypto";
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { BalanceStrategy, ChatMessage } from "@ts-qa/shared";
+import {
+  type BalanceStrategy,
+  type ChatMessage,
+  checkSystemInvariants,
+} from "../../../packages/shared/src/index.ts";
 import {
   FallbackAwareLlmClient,
   OfflineAgentService,
@@ -102,6 +107,10 @@ export async function createAppServer(options?: AppServerOptions) {
   });
 
   let activeModelLabel = "未加载";
+  let activePredictorReady = false;
+  let embedderFitted = false;
+  let activeModelDatasetId: string | undefined;
+  let activeVectorDatasetId: string | undefined;
 
   // 缓存一份确定性合成语料用于增强 Web 端分类器训练集（val/test 仍保持 100% 纯真实样本）
   const cachedSynthTrainSamples = synthesizeQaDataset({
@@ -252,6 +261,7 @@ export async function createAppServer(options?: AppServerOptions) {
         cleaned.chunks.map((c) => c.content),
         params.ngramMax
       );
+      embedderFitted = true;
       if (evalVectorStore !== vectorStore) {
         await runRagIndexJob(cleaned.chunks, embedder, vectorStore, store, {
           datasetVersionId: cleaned.datasetVersion.id,
@@ -259,6 +269,9 @@ export async function createAppServer(options?: AppServerOptions) {
         });
       }
       agentService.setIntentPredictor(predictFn);
+      activePredictorReady = true;
+      activeModelDatasetId = cleaned.datasetVersion.id;
+      activeVectorDatasetId = cleaned.datasetVersion.id;
       activeModelLabel = `${targetModel} (${params.version})`;
     }
 
@@ -314,15 +327,125 @@ export async function createAppServer(options?: AppServerOptions) {
               .filter((s) => s.split === "train")
               .map((s) => `问题：${s.question}\n标准回答：${s.answer}`);
       trainedEmbedder.fit(fitTexts, ngramMax);
+      embedderFitted = true;
       agentService.setIntentPredictor(predictFn);
+      activePredictorReady = true;
+      activeModelDatasetId = bestDataset.id;
+      activeVectorDatasetId = bestDataset.id;
       activeModelLabel = `${targetModel} (${bestDataset.version})`;
     }
   }
 
+  interface QaReviewItem {
+    id: string;
+    ticketId: string;
+    question: string;
+    answer: string;
+    category: string;
+    status: "pending_review" | "approved" | "rejected";
+    createdAt: string;
+    reviewedAt?: string;
+  }
+
+  const qaReviewPath = join(dataDir, "qa-review-queue.json");
+  function loadQaReviewQueue(): QaReviewItem[] {
+    if (!existsSync(qaReviewPath)) return [];
+    try {
+      return JSON.parse(readFileSync(qaReviewPath, "utf-8")) as QaReviewItem[];
+    } catch {
+      return [];
+    }
+  }
+  function saveQaReviewQueue(items: QaReviewItem[]): void {
+    mkdirSync(dataDir, { recursive: true });
+    writeFileSync(qaReviewPath, JSON.stringify(items, null, 2), "utf-8");
+  }
+
+  const startedAt = Date.now();
+  const chatLatencies: number[] = [];
+  const runtimeMetrics = {
+    totalRequests: 0,
+    chatRequests: 0,
+    handoffCount: 0,
+    guardrailTriggers: 0,
+    helpfulCount: 0,
+    unhelpfulCount: 0,
+  };
+  const auditLogs: Array<{
+    id: string;
+    timestamp: string;
+    action: string;
+    detail: string;
+  }> = [];
+  function recordAudit(action: string, detail: string): void {
+    auditLogs.unshift({
+      id: randomUUID().slice(0, 8),
+      timestamp: new Date().toISOString(),
+      action,
+      detail,
+    });
+    if (auditLogs.length > 50) auditLogs.length = 50;
+  }
+
   const server = createServer(async (req, res) => {
     try {
+      runtimeMetrics.totalRequests += 1;
       const url = new URL(req.url ?? "/", "http://127.0.0.1");
       const pathname = url.pathname;
+
+      if (req.method === "GET" && pathname === "/healthz") {
+        return sendJson(res, 200, {
+          status: "ok",
+          uptimeSec: Math.round((Date.now() - startedAt) / 1000),
+          pid: process.pid,
+        });
+      }
+
+      if (req.method === "GET" && pathname === "/readyz") {
+        const versions = store.listDatasetVersions();
+        const vectorCount = vectorStore.listRecords().length;
+        const ready = versions.length > 0 && vectorCount > 0;
+        return sendJson(res, ready ? 200 : 503, {
+          status: ready ? "ready" : "not_ready",
+          datasetVersions: versions.length,
+          vectorCount,
+          activeModel: activeModelLabel,
+        });
+      }
+
+      if (req.method === "GET" && pathname === "/api/metrics") {
+        const sorted = [...chatLatencies].sort((a, b) => a - b);
+        const p95LatencyMs =
+          sorted.length > 0
+            ? sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))]
+            : 0;
+        const avgLatencyMs =
+          sorted.length > 0
+            ? Math.round(sorted.reduce((a, b) => a + b, 0) / sorted.length)
+            : 0;
+        const fbTotal = runtimeMetrics.helpfulCount + runtimeMetrics.unhelpfulCount;
+        return sendJson(res, 200, {
+          uptimeSec: Math.round((Date.now() - startedAt) / 1000),
+          totalRequests: runtimeMetrics.totalRequests,
+          chatRequests: runtimeMetrics.chatRequests,
+          p95LatencyMs,
+          avgLatencyMs,
+          handoffRate:
+            runtimeMetrics.chatRequests > 0
+              ? Number((runtimeMetrics.handoffCount / runtimeMetrics.chatRequests).toFixed(4))
+              : 0,
+          positiveFeedbackRate:
+            fbTotal > 0
+              ? Number((runtimeMetrics.helpfulCount / fbTotal).toFixed(4))
+              : 1,
+          guardrailTriggers: runtimeMetrics.guardrailTriggers,
+          vectorCount: vectorStore.listRecords().length,
+          pendingQaReviewCount: loadQaReviewQueue().filter(
+            (x) => x.status === "pending_review"
+          ).length,
+          auditLogs: auditLogs.slice(0, 20),
+        });
+      }
 
       if (req.method === "GET" && pathname === "/") {
         const html = readFileSync(htmlPath, "utf-8");
@@ -358,6 +481,10 @@ export async function createAppServer(options?: AppServerOptions) {
             isDefaultDemo: filePath === defaultCorpusPath,
           })),
           availablePresets: [
+            {
+              label: "hybrid-gold-train.jsonl (黄金配比融合集 6,107 条 - 推荐)",
+              filePath: resolve(repoRoot, "data/hybrid-gold-train.jsonl"),
+            },
             {
               label: "common-100-qa.jsonl (人工均衡基准 100 条)",
               filePath: defaultCorpusPath,
@@ -448,6 +575,7 @@ export async function createAppServer(options?: AppServerOptions) {
           replaceCurrent?: boolean;
         };
         const allowedPresets = new Set([
+          resolve(repoRoot, "data/hybrid-gold-train.jsonl"),
           defaultCorpusPath,
           resolve(repoRoot, "data/external/taobao-ecd-qa.jsonl"),
           resolve(repoRoot, "data/bayes-enhanced-train-8k.jsonl"),
@@ -755,13 +883,21 @@ export async function createAppServer(options?: AppServerOptions) {
         if (!body.content?.trim()) {
           return sendJson(res, 400, { error: "提问内容不能为空" });
         }
+        const t0 = Date.now();
         const result = await agentService.handleCustomerMessage({
           sessionId: body.sessionId ?? "demo-session-1",
           customerId: body.customerId ?? "demo-customer",
           content: body.content.trim(),
         });
+        const elapsed = Date.now() - t0;
+        runtimeMetrics.chatRequests += 1;
+        chatLatencies.push(elapsed);
+        if (chatLatencies.length > 200) chatLatencies.shift();
+        if (result.ticket) runtimeMetrics.handoffCount += 1;
+        if (result.guardrailTriggered) runtimeMetrics.guardrailTriggers += 1;
         return sendJson(res, 200, {
           ...result,
+          latencyMs: elapsed,
           activeModel: activeModelLabel,
         });
       }
@@ -775,6 +911,8 @@ export async function createAppServer(options?: AppServerOptions) {
           return sendJson(res, 400, { error: "缺少 messageId 或 feedback" });
         }
         agentService.submitFeedback(body.messageId, body.feedback);
+        if (body.feedback === "helpful") runtimeMetrics.helpfulCount += 1;
+        if (body.feedback === "unhelpful") runtimeMetrics.unhelpfulCount += 1;
         return sendJson(res, 200, { ok: true });
       }
 
@@ -792,6 +930,7 @@ export async function createAppServer(options?: AppServerOptions) {
           agentId: body.agentId ?? "human-agent-01",
           replyContent: body.replyContent.trim(),
         });
+        recordAudit("handoff_reply", `工单 ${body.ticketId} 已由 ${body.agentId ?? "human-agent-01"} 回复`);
         return sendJson(res, 200, result);
       }
 
@@ -815,31 +954,159 @@ export async function createAppServer(options?: AppServerOptions) {
           return sendJson(res, 400, { error: "缺少完整的客户提问或人工回复" });
         }
 
-        const feedbackPath = join(dataDir, "feedback-qa.jsonl");
-        mkdirSync(dataDir, { recursive: true });
-        if (!existsSync(feedbackPath)) {
-          writeFileSync(feedbackPath, "", "utf-8");
-        }
         const category = mapToStandardCategory(undefined, lastCustomer.content);
-        appendFileSync(
-          feedbackPath,
-          `${JSON.stringify({
-            question: lastCustomer.content,
-            answer: lastHuman.content,
-            category,
-          })}\n`,
-          "utf-8"
-        );
-        importedFiles.add(feedbackPath);
-        importCorpusFile(feedbackPath, store, {
-          title: "人工客服反哺 QA 语料",
-        });
-
-        return sendJson(res, 200, {
-          ok: true,
+        const queue = loadQaReviewQueue();
+        const item: QaReviewItem = {
+          id: randomUUID().slice(0, 8),
+          ticketId: body.ticketId,
           question: lastCustomer.content,
           answer: lastHuman.content,
           category,
+          status: "pending_review",
+          createdAt: new Date().toISOString(),
+        };
+        queue.unshift(item);
+        saveQaReviewQueue(queue);
+        recordAudit("qa_submitted_for_review", `工单 ${body.ticketId} 已提交至 QA 审核队列 (${item.id})`);
+
+        return sendJson(res, 200, {
+          ok: true,
+          status: "pending_review",
+          item,
+          question: item.question,
+          answer: item.answer,
+          category,
+        });
+      }
+
+      if (req.method === "GET" && pathname === "/api/qa-review/list") {
+        return sendJson(res, 200, { items: loadQaReviewQueue() });
+      }
+
+      if (req.method === "POST" && pathname === "/api/qa-review/decide") {
+        const body = (await readJsonBody(req)) as {
+          id?: string;
+          decision?: "approve" | "reject";
+          question?: string;
+          answer?: string;
+          category?: string;
+        };
+        if (!body.id || (body.decision !== "approve" && body.decision !== "reject")) {
+          return sendJson(res, 400, { error: "缺少 id 或无效的 decision" });
+        }
+        const queue = loadQaReviewQueue();
+        const idx = queue.findIndex((x) => x.id === body.id);
+        if (idx === -1) {
+          return sendJson(res, 404, { error: "审核记录不存在" });
+        }
+        const item = queue[idx];
+        item.status = body.decision === "approve" ? "approved" : "rejected";
+        item.reviewedAt = new Date().toISOString();
+        if (body.question?.trim()) item.question = body.question.trim();
+        if (body.answer?.trim()) item.answer = body.answer.trim();
+        if (body.category?.trim()) item.category = body.category.trim();
+        saveQaReviewQueue(queue);
+
+        if (body.decision === "approve") {
+          const feedbackPath = join(dataDir, "feedback-qa.jsonl");
+          mkdirSync(dataDir, { recursive: true });
+          if (!existsSync(feedbackPath)) {
+            writeFileSync(feedbackPath, "", "utf-8");
+          }
+          appendFileSync(
+            feedbackPath,
+            `${JSON.stringify({
+              question: item.question,
+              answer: item.answer,
+              category: item.category,
+            })}\n`,
+            "utf-8"
+          );
+          importedFiles.add(feedbackPath);
+          importCorpusFile(feedbackPath, store, {
+            title: "人工客服反哺 QA 语料（已审核）",
+          });
+          recordAudit("qa_approved", `QA 样本 ${item.id} (${item.category}) 审核通过并入库`);
+        } else {
+          recordAudit("qa_rejected", `QA 样本 ${item.id} 已驳回`);
+        }
+        return sendJson(res, 200, { ok: true, item });
+      }
+
+      if (req.method === "POST" && pathname === "/api/models/rollback") {
+        const body = (await readJsonBody(req)) as { jobId?: string };
+        if (!body.jobId) {
+          return sendJson(res, 400, { error: "缺少 jobId" });
+        }
+        const job = store.listTrainingJobs().find((j) => j.id === body.jobId);
+        if (!job) {
+          return sendJson(res, 404, { error: "目标训练任务不存在" });
+        }
+        const samples = store.listQaSamples(job.datasetVersionId);
+        if (samples.length === 0) {
+          return sendJson(res, 400, { error: "该版本关联样本为空，无法回滚" });
+        }
+        const clsType =
+          job.targetModel.includes("keyword") ? "keyword_baseline" : "naive_bayes";
+        const ngramMax = Number(job.hyperparams.ngramMax ?? 2);
+        const { predictFn, targetModel } = buildPredictorFromSamples(
+          samples,
+          clsType,
+          ngramMax,
+          Number(job.hyperparams.alpha ?? 1.0),
+          true
+        );
+        const trainChunks = samples
+          .filter((s) => s.split === "train")
+          .map((s, i) => ({
+            id: `rb-${job.datasetVersionId}-${i}`,
+            documentId: s.sourceDocId || job.datasetVersionId,
+            chunkIndex: i,
+            content: `问题：${s.question}\n标准回答：${s.answer}`,
+            sanitized: false,
+            metadata: { sourceLabel: s.category },
+          }));
+        if (trainChunks.length > 0) {
+          trainedEmbedder.fit(
+            trainChunks.map((c) => c.content),
+            ngramMax
+          );
+          embedderFitted = true;
+          await runRagIndexJob(trainChunks, embedder, vectorStore, store, {
+            datasetVersionId: job.datasetVersionId,
+            seed: job.seed,
+          });
+        }
+        agentService.setIntentPredictor(predictFn);
+        activePredictorReady = true;
+        activeModelDatasetId = job.datasetVersionId;
+        activeVectorDatasetId = job.datasetVersionId;
+        const versionObj = store
+          .listDatasetVersions()
+          .find((v) => v.id === job.datasetVersionId);
+        activeModelLabel = `${targetModel} (${versionObj?.version ?? job.id.slice(0, 8)}-rollback)`;
+        recordAudit("model_rollback", `线上模型与向量库已同步回滚至 ${activeModelLabel}`);
+        return sendJson(res, 200, {
+          ok: true,
+          activeModel: activeModelLabel,
+          jobId: job.id,
+        });
+      }
+
+      if (req.method === "GET" && pathname === "/api/invariants") {
+        const violations = checkSystemInvariants({
+          sessions: store.listChatSessions(),
+          tickets: store.listHandoffTickets(),
+          activePredictorReady,
+          vectorCount: vectorStore.listRecords().length,
+          embedderFitted,
+          activeVectorDatasetId,
+          activeModelDatasetId,
+        });
+        return sendJson(res, 200, {
+          ok: violations.length === 0,
+          checkedRules: 5,
+          violations,
         });
       }
 
@@ -877,10 +1144,20 @@ const isMain =
 
 if (isMain) {
   const port = Number(process.env.PORT ?? 3000);
+  const host = process.env.HOST ?? "127.0.0.1";
   const server = await createAppServer();
-  server.listen(port, "127.0.0.1", () => {
+  server.listen(port, host, () => {
     console.log(
-      `培训-客服系统demo 已启动: http://127.0.0.1:${port} (离线模式)`
+      `培训-客服系统demo 已启动: http://${host}:${port} (离线模式)`
     );
   });
+  const shutdown = (signal: string) => {
+    console.log(`收到 ${signal}，正在优雅关闭服务...`);
+    server.close(() => {
+      process.exit(0);
+    });
+    setTimeout(() => process.exit(1), 5000).unref();
+  };
+  process.on("SIGINT", () => shutdown("SIGINT"));
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
 }
