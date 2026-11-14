@@ -118,6 +118,34 @@ test("Web HTTP 服务端到端测试：初始化基线、问答、实验复现�
     assert.equal(tuneRes.trials, 48);
     assert.equal(tuneRes.bestParams.seedsEvaluated, 3);
     assert.ok(tuneRes.bestParams.ngramMax >= 1);
+
+    // 7. 导出当前最新数据集为 SFT 微调 JSONL 与语料源移除保护校验
+    const exportRes = await fetch(`${baseUrl}/api/dataset/export-finetune`);
+    assert.equal(exportRes.status, 200);
+    const exportedText = await exportRes.text();
+    const firstExported = JSON.parse(exportedText.split("\n")[0]);
+    assert.ok(firstExported.instruction && firstExported.input && firstExported.output);
+
+    const removeDefaultRes = await fetch(`${baseUrl}/api/corpus/remove`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ onlyCustom: true }),
+    });
+    assert.equal(removeDefaultRes.status, 200);
+
+    const ovAfter = (await (await fetch(`${baseUrl}/api/overview`)).json()) as {
+      availablePresets: Array<{ label: string; filePath: string }>;
+    };
+    assert.ok(Array.isArray(ovAfter.availablePresets) && ovAfter.availablePresets.length >= 1);
+    const usePresetRes = await fetch(`${baseUrl}/api/corpus/use-preset`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        filePath: ovAfter.availablePresets[0].filePath,
+        replaceCurrent: false,
+      }),
+    });
+    assert.equal(usePresetRes.status, 200);
     assert.ok((tuneRes.finalResult.evalJob.metrics?.macroF1 ?? 0) > 0);
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));

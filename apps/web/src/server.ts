@@ -14,6 +14,7 @@ import {
   mapToStandardCategory,
   runCleaningPipeline,
   sanitizeText,
+  synthesizeQaDataset,
 } from "../../../packages/cleaner/src/index.ts";
 import {
   importCorpusFile,
@@ -102,11 +103,26 @@ export async function createAppServer(options?: AppServerOptions) {
 
   let activeModelLabel = "未加载";
 
+  // 缓存一份确定性合成语料用于增强 Web 端分类器训练集（val/test 仍保持 100% 纯真实样本）
+  const cachedSynthTrainSamples = synthesizeQaDataset({
+    baseCount: 1200,
+    targetCount: 4000,
+    seed: 2026,
+  }).allRecords.map((r) => ({
+    id: r.id,
+    datasetVersionId: "synth-aug-4k",
+    question: r.question,
+    answer: r.answer,
+    category: r.rawCategory,
+    split: "train" as const,
+  }));
+
   function buildPredictorFromSamples(
     samples: ReturnType<typeof balanceAndSplitSamples>["samples"],
     classifierType: "naive_bayes" | "keyword_baseline",
     ngramMax: number,
-    alpha: number
+    alpha: number,
+    useSynthAugment = true
   ) {
     if (classifierType === "naive_bayes") {
       const nb = new CharNgramNaiveBayesClassifier({
@@ -115,10 +131,16 @@ export async function createAppServer(options?: AppServerOptions) {
         alpha,
       });
       const trainSamples = samples.filter((s) => s.split === "train");
-      nb.fit(trainSamples.length > 0 ? trainSamples : samples);
+      const baseTrain = trainSamples.length > 0 ? trainSamples : samples;
+      if (useSynthAugment) {
+        const weightedBaseTrain = Array.from({ length: 15 }, () => baseTrain).flat();
+        nb.fit([...cachedSynthTrainSamples, ...weightedBaseTrain]);
+      } else {
+        nb.fit(baseTrain);
+      }
       return {
         predictFn: (q: string) => nb.predict(q),
-        targetModel: `char-ngram-nb(n=1..${ngramMax},a=${alpha})`,
+        targetModel: `char-ngram-nb${useSynthAugment ? "+synth" : ""}(n=1..${ngramMax},a=${alpha})`,
       };
     }
     return {
@@ -146,6 +168,7 @@ export async function createAppServer(options?: AppServerOptions) {
     ngramMax: number;
     alpha: number;
     evalSplit: "val" | "test";
+    useSynthAugment?: boolean;
   }) {
     const allRecords: RawCorpusRecord[] = [];
     let lastDocId = "merged-corpus";
@@ -168,7 +191,8 @@ export async function createAppServer(options?: AppServerOptions) {
       cleaned.samples,
       params.classifierType,
       params.ngramMax,
-      params.alpha
+      params.alpha,
+      params.useSynthAugment ?? true
     );
 
     const prevBestJob = getBestHistoricalEvalJob();
@@ -328,6 +352,37 @@ export async function createAppServer(options?: AppServerOptions) {
             installedModels: ollamaHealth?.models ?? [],
           },
           activeModel: activeModelLabel,
+          activeSources: Array.from(importedFiles).map((filePath) => ({
+            filePath,
+            name: basename(filePath),
+            isDefaultDemo: filePath === defaultCorpusPath,
+          })),
+          availablePresets: [
+            {
+              label: "common-100-qa.jsonl (人工均衡基准 100 条)",
+              filePath: defaultCorpusPath,
+            },
+            {
+              label: "taobao-ecd-qa.jsonl (淘宝真实电商客服 296 条)",
+              filePath: resolve(repoRoot, "data/external/taobao-ecd-qa.jsonl"),
+            },
+            {
+              label: "bayes-enhanced-train-8k.jsonl (复合贝叶斯增强训练集 6,580 条)",
+              filePath: resolve(repoRoot, "data/bayes-enhanced-train-8k.jsonl"),
+            },
+            {
+              label: "bayes-hard-eval-200.jsonl (复合难点盲测集 158 条)",
+              filePath: resolve(repoRoot, "data/bayes-hard-eval-200.jsonl"),
+            },
+            {
+              label: "open-real-2k-sample.jsonl (开源真实混合客服 2,000 条)",
+              filePath: resolve(repoRoot, "data/external/open-real-2k-sample.jsonl"),
+            },
+            {
+              label: "corpus-10k.jsonl (多维槽位合成母本 10,000 条)",
+              filePath: resolve(repoRoot, "data/corpus-10k.jsonl"),
+            },
+          ].filter((p) => existsSync(p.filePath)),
           documents: store.listRawDocuments(),
           datasetVersions: store.listDatasetVersions(),
           trainingJobs: store.listTrainingJobs(),
@@ -361,6 +416,88 @@ export async function createAppServer(options?: AppServerOptions) {
         });
       }
 
+      if (req.method === "POST" && pathname === "/api/corpus/remove") {
+        const body = (await readJsonBody(req)) as {
+          filePath?: string;
+          onlyCustom?: boolean;
+        };
+        if (body.onlyCustom) {
+          if (importedFiles.size <= 1 && importedFiles.has(defaultCorpusPath)) {
+            return sendJson(res, 400, {
+              error: "请先上传您自己的真实语料文件，再移除默认演示集。",
+            });
+          }
+          importedFiles.delete(defaultCorpusPath);
+        } else if (body.filePath) {
+          if (importedFiles.size <= 1 && importedFiles.has(body.filePath)) {
+            return sendJson(res, 400, {
+              error: "至少需要保留一份训练语料。",
+            });
+          }
+          importedFiles.delete(body.filePath);
+        }
+        return sendJson(res, 200, {
+          ok: true,
+          activeCount: importedFiles.size,
+        });
+      }
+
+      if (req.method === "POST" && pathname === "/api/corpus/use-preset") {
+        const body = (await readJsonBody(req)) as {
+          filePath?: string;
+          replaceCurrent?: boolean;
+        };
+        const allowedPresets = new Set([
+          defaultCorpusPath,
+          resolve(repoRoot, "data/external/taobao-ecd-qa.jsonl"),
+          resolve(repoRoot, "data/bayes-enhanced-train-8k.jsonl"),
+          resolve(repoRoot, "data/bayes-hard-eval-200.jsonl"),
+          resolve(repoRoot, "data/external/open-real-2k-sample.jsonl"),
+          resolve(repoRoot, "data/corpus-10k.jsonl"),
+        ]);
+        if (!body.filePath || !allowedPresets.has(body.filePath) || !existsSync(body.filePath)) {
+          return sendJson(res, 400, { error: "所选预设语料不存在或不在允许列表中" });
+        }
+        if (body.replaceCurrent) {
+          importedFiles.clear();
+        }
+        importedFiles.add(body.filePath);
+        const imported = importCorpusFile(body.filePath, store, {
+          title: basename(body.filePath),
+        });
+        return sendJson(res, 200, {
+          ok: true,
+          document: imported.document,
+          recordCount: imported.records.length,
+          activeCount: importedFiles.size,
+        });
+      }
+
+      if (req.method === "GET" && pathname === "/api/dataset/export-finetune") {
+        const versions = store.listDatasetVersions();
+        const latest = versions[0];
+        if (!latest) {
+          return sendJson(res, 404, { error: "暂无可导出的数据集版本，请先运行训练。" });
+        }
+        const samples = store.listQaSamples(latest.id);
+        const lines = samples.map((s) =>
+          JSON.stringify({
+            instruction:
+              "你是一个严谨、专业的离线电商客服助手，请依据业务规则准确作答。",
+            input: s.question,
+            output: s.answer,
+            category: s.category,
+            split: s.split,
+          })
+        );
+        res.writeHead(200, {
+          "Content-Type": "application/x-ndjson; charset=utf-8",
+          "Content-Disposition": `attachment; filename="finetune-${latest.version}.jsonl"`,
+        });
+        res.end(lines.join("\n"));
+        return;
+      }
+
       if (req.method === "POST" && pathname === "/api/pipeline/run") {
         const body = (await readJsonBody(req)) as {
           version?: string;
@@ -371,6 +508,7 @@ export async function createAppServer(options?: AppServerOptions) {
           ngramMax?: number;
           alpha?: number;
           evalSplit?: "val" | "test";
+          useSynthAugment?: boolean;
         };
 
         const trainR = Number(body.splitRatio?.train ?? 0.8);
@@ -396,6 +534,7 @@ export async function createAppServer(options?: AppServerOptions) {
           ngramMax: Math.min(3, Math.max(1, Number(body.ngramMax ?? 2))),
           alpha: Math.max(0.05, Number(body.alpha ?? 1.0)),
           evalSplit: body.evalSplit ?? "test",
+          useSynthAugment: body.useSynthAugment ?? true,
         });
 
         return sendJson(res, 200, result);
@@ -405,10 +544,12 @@ export async function createAppServer(options?: AppServerOptions) {
         const body = (await readJsonBody(req)) as {
           seed?: number;
           multiSeed?: boolean;
+          useSynthAugment?: boolean;
           splitRatio?: { train: number; val: number; test: number };
         };
         const seed = Number(body.seed ?? 42);
         const useMultiSeed = body.multiSeed ?? true;
+        const useSynthAugment = body.useSynthAugment ?? true;
         const evalSeeds = useMultiSeed
           ? Array.from(new Set([seed, 7, 2026]))
           : [seed];
@@ -531,7 +672,18 @@ export async function createAppServer(options?: AppServerOptions) {
                   ngramMax: cfg.ngramMax,
                   alpha: cfg.alpha,
                 });
-                nb.fit(foldTrain);
+                if (useSynthAugment) {
+                  const weightedFoldTrain = Array.from(
+                    { length: 10 },
+                    () => foldTrain
+                  ).flat();
+                  nb.fit([
+                    ...cachedSynthTrainSamples.slice(0, 800),
+                    ...weightedFoldTrain,
+                  ]);
+                } else {
+                  nb.fit(foldTrain);
+                }
                 predictFn = (q) => nb.predict(q);
               } else {
                 predictFn = (q) => mapToStandardCategory(undefined, q);
@@ -576,6 +728,7 @@ export async function createAppServer(options?: AppServerOptions) {
           ngramMax: bestParams.ngramMax,
           alpha: bestParams.alpha,
           evalSplit: "test",
+          useSynthAugment,
         });
 
         return sendJson(res, 200, {

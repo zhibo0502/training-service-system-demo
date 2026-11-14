@@ -195,14 +195,25 @@
     <!-- 2. 样本均衡与训练工作台 -->
     <section id="tab-data" class="panel">
       <div class="card">
-        <h3 style="margin-top:0;">一、语料库与外部数据导入</h3>
+        <h3 style="margin-top:0;">一、语料库选择与外部数据导入（支持真实 JSONL / CSV）</h3>
+        <div class="row" style="justify-content: space-between; margin-bottom: 10px;">
+          <div class="row" style="flex:1; min-width: 280px;">
+            <span style="font-size:13px;font-weight:500;">选择已有数据集：</span>
+            <select id="presetSelect" style="flex:1; max-width:440px;"></select>
+            <button class="primary" onclick="usePreset(true)">加载并替换当前语料</button>
+            <button class="ghost" onclick="usePreset(false)">叠加到当前语料</button>
+          </div>
+          <a href="/api/dataset/export-finetune" download style="text-decoration:none;"><button class="ghost" type="button">导出 SFT 微调 JSONL</button></a>
+        </div>
         <div class="row" style="justify-content: space-between;">
           <div id="corpusSummary" class="meta" style="margin:0;">正在加载语料统计...</div>
           <div class="row">
             <input type="file" id="corpusFileInput" accept=".jsonl,.csv,.txt" />
-            <button class="ghost" onclick="uploadCorpus()">导入语料并叠加</button>
+            <button class="ghost" onclick="uploadCorpus()">上传自定义文件</button>
+            <button class="ghost" onclick="removeDefaultDemo()">仅用自传语料</button>
           </div>
         </div>
+        <div id="activeSourcesBox" class="meta" style="margin-top:8px;"></div>
         <div id="uploadMsg" class="meta"></div>
       </div>
 
@@ -273,6 +284,9 @@
           <button class="ghost" style="border-color:var(--ok);color:var(--ok);font-weight:600;" onclick="autoTune()">⚡ 一键自动化调参 (算法/策略/N-gram/Alpha)</button>
           <label style="font-size:12px;display:flex;align-items:center;gap:4px;">
             <input type="checkbox" id="multiSeedCheck" checked /> 多种子稳健寻优 (3 Seeds × 5-Fold CV)
+          </label>
+          <label style="font-size:12px;display:flex;align-items:center;gap:4px;">
+            <input type="checkbox" id="useSynthAugmentCheck" checked /> 合成语料增强 (纯真实大数据集可取消)
           </label>
           <span id="runStatus" class="meta" style="margin:0;"></span>
         </div>
@@ -456,6 +470,7 @@
       const ngramMax = Number(document.getElementById("ngramSelect").value);
       const alpha = Number(document.getElementById("alphaSlider").value);
       const evalSplit = document.getElementById("evalSplitSelect").value;
+      const useSynthAugment = document.getElementById("useSynthAugmentCheck").checked;
 
       const res = await fetch("/api/pipeline/run", {
         method: "POST",
@@ -468,7 +483,8 @@
           classifierType,
           ngramMax,
           alpha,
-          evalSplit
+          evalSplit,
+          useSynthAugment
         })
       });
       const runData = await res.json();
@@ -480,6 +496,7 @@
 
     async function autoTune() {
       const multiSeed = document.getElementById("multiSeedCheck").checked;
+      const useSynthAugment = document.getElementById("useSynthAugmentCheck").checked;
       document.getElementById("runStatus").textContent = multiSeed
         ? "正在执行 3 Seeds × 5-Fold CV 跨算法搜索 48 组配置..."
         : "正在执行单 Seed 5-Fold CV 跨算法搜索 48 组配置...";
@@ -492,6 +509,7 @@
         body: JSON.stringify({
           seed,
           multiSeed,
+          useSynthAugment,
           splitRatio: { train, val, test }
         })
       });
@@ -543,11 +561,70 @@
       await loadMessages();
     }
 
+    async function usePreset(replaceCurrent) {
+      const select = document.getElementById("presetSelect");
+      const filePath = select.value;
+      if (!filePath) return;
+      document.getElementById("uploadMsg").textContent = "正在加载所选数据集...";
+      const res = await fetch("/api/corpus/use-preset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filePath, replaceCurrent })
+      });
+      const data = await res.json();
+      document.getElementById("uploadMsg").textContent = data.error
+        ? `加载失败: ${data.error}`
+        : `已${replaceCurrent ? "切换为" : "叠加"}数据集（解析 ${data.recordCount} 条），点击下方“开始清洗均衡、训练并评测”或“一键自动化调参”即可生效。`;
+      await refreshOverview();
+    }
+
+    async function removeCorpusSource(filePath) {
+      const res = await fetch("/api/corpus/remove", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filePath })
+      });
+      const data = await res.json();
+      document.getElementById("uploadMsg").textContent = data.error
+        ? data.error
+        : "已移除该语料源，请点击“开始清洗均衡、训练并评测”重新训练。";
+      await refreshOverview();
+    }
+
+    async function removeDefaultDemo() {
+      const res = await fetch("/api/corpus/remove", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ onlyCustom: true })
+      });
+      const data = await res.json();
+      document.getElementById("uploadMsg").textContent = data.error
+        ? data.error
+        : "已移除默认演示语料集，当前仅保留您上传的真实语料，请点击重新训练。";
+      await refreshOverview();
+    }
+
     async function refreshOverview() {
       const res = await fetch("/api/overview");
       const data = await res.json();
       document.getElementById("modeBadge").textContent = `运行模式: ${data.mode} | 线上模型: ${data.activeModel || "-"}`;
       document.getElementById("corpusSummary").textContent = `已接入语料文件数: ${data.documents.length} | 数据集版本数: ${data.datasetVersions.length}`;
+      const sourcesBox = document.getElementById("activeSourcesBox");
+      if (Array.isArray(data.activeSources)) {
+        sourcesBox.innerHTML = "当前参与训练语料源：" + data.activeSources.map(s =>
+          `<span class="badge" style="margin-right:6px;">${s.name}${s.isDefaultDemo ? " (默认演示)" : " (自定义)"} <a href="javascript:void(0)" onclick="removeCorpusSource('${s.filePath.replace(/'/g, "\\'")}')" style="margin-left:4px;color:var(--danger);text-decoration:none;">×</a></span>`
+        ).join("");
+      }
+      const presetSelect = document.getElementById("presetSelect");
+      if (presetSelect && Array.isArray(data.availablePresets)) {
+        const prevVal = presetSelect.value;
+        presetSelect.innerHTML = data.availablePresets.map(p =>
+          `<option value="${p.filePath}">${p.label}</option>`
+        ).join("");
+        if (prevVal && data.availablePresets.some(p => p.filePath === prevVal)) {
+          presetSelect.value = prevVal;
+        }
+      }
 
       const latestVer = data.datasetVersions[0];
       const distBox = document.getElementById("distBars");
