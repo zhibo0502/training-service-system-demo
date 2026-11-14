@@ -142,7 +142,14 @@ export async function createAppServer(options?: AppServerOptions) {
       const trainSamples = samples.filter((s) => s.split === "train");
       const baseTrain = trainSamples.length > 0 ? trainSamples : samples;
       if (useSynthAugment) {
-        const weightedBaseTrain = Array.from({ length: 15 }, () => baseTrain).flat();
+        const repeatFactor =
+          baseTrain.length >= 1200
+            ? 1
+            : Math.min(15, Math.max(1, Math.ceil(1800 / Math.max(1, baseTrain.length))));
+        const weightedBaseTrain =
+          repeatFactor > 1
+            ? Array.from({ length: repeatFactor }, () => baseTrain).flat()
+            : baseTrain;
         nb.fit([...cachedSynthTrainSamples, ...weightedBaseTrain]);
       } else {
         nb.fit(baseTrain);
@@ -801,10 +808,14 @@ export async function createAppServer(options?: AppServerOptions) {
                   alpha: cfg.alpha,
                 });
                 if (useSynthAugment) {
-                  const weightedFoldTrain = Array.from(
-                    { length: 10 },
-                    () => foldTrain
-                  ).flat();
+                  const repeatFactor =
+                    foldTrain.length >= 800
+                      ? 1
+                      : Math.min(10, Math.max(1, Math.ceil(1200 / Math.max(1, foldTrain.length))));
+                  const weightedFoldTrain =
+                    repeatFactor > 1
+                      ? Array.from({ length: repeatFactor }, () => foldTrain).flat()
+                      : foldTrain;
                   nb.fit([
                     ...cachedSynthTrainSamples.slice(0, 800),
                     ...weightedFoldTrain,
