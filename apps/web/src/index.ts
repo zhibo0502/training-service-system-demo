@@ -1,4 +1,4 @@
 /**
- * 界面层占位入口：后续将接入 Next.js 客户问答端与管理后台。
+ * 界面层与本地 HTTP 服务入口
  */
-export const WEB_APP = "@ts-qa/web";
+export * from "./server.ts";

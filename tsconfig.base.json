@@ -9,6 +9,8 @@
     "forceConsistentCasingInFileNames": true,
     "declaration": true,
     "sourceMap": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true
   }
 }

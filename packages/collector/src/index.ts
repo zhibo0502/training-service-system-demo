@@ -1,4 +1,5 @@
 /**
- * 数据收集模块：负责静态文档接收与在线对话日志采集。
+ * 数据收集模块：负责静态文档接收与公开客服/投诉语料导入落库
  */
-export const COLLECTOR_MODULE = "@ts-qa/collector";
+export * from "./storage/sqlite-store.ts";
+export * from "./importers/corpus-importer.ts";

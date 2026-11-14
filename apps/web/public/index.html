@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>培训-客服系统demo</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --primary: #2563eb;
+      --primary-soft: #eff6ff;
+      --border: #e5e7eb;
+      --warn: #d97706;
+      --ok: #059669;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    header {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header h1 { margin: 0; font-size: 18px; }
+    .badge {
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--primary-soft);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    .tabs {
+      display: flex;
+      gap: 8px;
+      padding: 12px 24px 0;
+    }
+    .tab-btn {
+      border: 1px solid var(--border);
+      background: var(--card);
+      padding: 8px 16px;
+      border-radius: 8px 8px 0 0;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .tab-btn.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+    main {
+      padding: 16px 24px 32px;
+      max-width: 1120px;
+      margin: 0 auto;
+    }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .chat-box {
+      height: 360px;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      background: #fafafa;
+      margin-bottom: 12px;
+    }
+    .msg {
+      margin-bottom: 12px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      max-width: 85%;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .msg.customer { background: var(--primary); color: #fff; margin-left: auto; }
+    .msg.assistant { background: #fff; border: 1px solid var(--border); }
+    .msg.human_agent { background: #ecfdf5; border: 1px solid #a7f3d0; }
+    .msg.system { background: #fffbeb; border: 1px solid #fde68a; font-size: 13px; }
+    .meta { font-size: 12px; color: var(--muted); margin-top: 6px; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    input, select, button {
+      font-size: 14px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+    input[type="text"] { flex: 1; min-width: 220px; }
+    button.primary {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+      cursor: pointer;
+    }
+    button.ghost { background: #fff; cursor: pointer; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td {
+      text-align: left;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .bar-row { display: flex; align-items: center; gap: 10px; margin: 6px 0; font-size: 13px; }
+    .bar-label { width: 100px; }
+    .bar-track { flex: 1; height: 12px; background: #e5e7eb; border-radius: 999px; overflow: hidden; }
+    .bar-fill { height: 100%; background: var(--primary); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>培训-客服系统demo</h1>
+    <span class="badge" id="modeBadge">加载中...</span>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('chat', this)">1. 客户问答端</button>
+    <button class="tab-btn" onclick="switchTab('data', this)">2. 样本均衡与评测看板</button>
+    <button class="tab-btn" onclick="switchTab('handoff', this)">3. 人工客服接管台</button>
+  </div>
+
+  <main>
+    <!-- 1. 客户问答端 -->
+    <section id="tab-chat" class="panel active">
+      <div class="card">
+        <div class="row" style="margin-bottom: 10px;">
+          <span style="font-size:13px;color:var(--muted);">快捷测试：</span>
+          <button class="ghost" onclick="quickAsk('请问优惠券过期了还能补发吗？')">优惠券补发</button>
+          <button class="ghost" onclick="quickAsk('我的快递三天没更新物流信息了怎么办？')">物流催件</button>
+          <button class="ghost" onclick="quickAsk('我要投诉你们的服务，请立即转人工！')">投诉转人工</button>
+          <button class="ghost" onclick="newSession()">新会话</button>
+        </div>
+        <div class="chat-box" id="chatBox"></div>
+        <div class="row">
+          <input type="text" id="chatInput" placeholder="请输入客户问题..." onkeydown="if(event.key==='Enter')sendMessage()" />
+          <button class="primary" onclick="sendMessage()">发送</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. 样本均衡与评测看板 -->
+    <section id="tab-data" class="panel">
+      <div class="card">
+        <h3 style="margin-top:0;">运行可复现清洗与评测实验</h3>
+        <div class="row">
+          <label>版本号：<input type="text" id="verInput" placeholder="留空自动递增" style="width:120px;flex:none;" /></label>
+          <label>Seed：<input type="number" id="seedInput" value="42" style="width:90px;" /></label>
+          <label>均衡策略：
+            <select id="strategySelect">
+              <option value="undersample">undersample (1:1:1:1 下采样)</option>
+              <option value="oversample">oversample (过采样)</option>
+              <option value="stratified">stratified (保持原比例)</option>
+            </select>
+          </label>
+          <button class="primary" onclick="runExperiment()">执行实验并评测</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-top:0;">最新数据集类别分布</h3>
+        <div id="distBars"></div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-top:0;">可复现实验与评测记录（Accuracy / Macro-F1）</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>任务类型</th>
+              <th>模型 / 策略</th>
+              <th>Seed</th>
+              <th>样本数</th>
+              <th>Accuracy</th>
+              <th>Macro-F1</th>
+            </tr>
+          </thead>
+          <tbody id="jobsBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 3. 人工客服接管台 -->
+    <section id="tab-handoff" class="panel">
+      <div class="card">
+        <h3 style="margin-top:0;">待处理与已认领转人工工单</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>工单 ID</th>
+              <th>会话 ID</th>
+              <th>触发原因</th>
+              <th>摘要</th>
+              <th>状态</th>
+              <th>人工回复操作</th>
+            </tr>
+          </thead>
+          <tbody id="ticketsBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    let currentSessionId = "demo-session-" + Date.now();
+
+    function switchTab(name, btn) {
+      document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+      document.getElementById("tab-" + name).classList.add("active");
+      btn.classList.add("active");
+      refreshOverview();
+    }
+
+    function quickAsk(text) {
+      document.getElementById("chatInput").value = text;
+      sendMessage();
+    }
+
+    function newSession() {
+      currentSessionId = "demo-session-" + Date.now();
+      loadMessages();
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById("chatInput");
+      const content = input.value.trim();
+      if (!content) return;
+      input.value = "";
+
+      await fetch("/api/chat/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId: currentSessionId, content })
+      });
+      await loadMessages();
+      await refreshOverview();
+    }
+
+    async function loadMessages() {
+      const res = await fetch("/api/chat/messages?sessionId=" + encodeURIComponent(currentSessionId));
+      const data = await res.json();
+      const box = document.getElementById("chatBox");
+      box.innerHTML = "";
+      for (const m of data.messages) {
+        const div = document.createElement("div");
+        div.className = "msg " + m.role;
+        let meta = "";
+        if (m.confidence !== undefined) {
+          meta += `置信度: ${m.confidence}`;
+        }
+        if (m.citations && m.citations.length > 0) {
+          meta += ` | 引用命中 ${m.citations.length} 条`;
+        }
+        div.innerHTML = `<div>${escapeHtml(m.content)}</div>` + (meta ? `<div class="meta">${meta}</div>` : "");
+        box.appendChild(div);
+      }
+      box.scrollTop = box.scrollHeight;
+    }
+
+    async function runExperiment() {
+      const version = document.getElementById("verInput").value.trim();
+      const seed = Number(document.getElementById("seedInput").value || 42);
+      const balanceStrategy = document.getElementById("strategySelect").value;
+      await fetch("/api/pipeline/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ version, seed, balanceStrategy })
+      });
+      await refreshOverview();
+    }
+
+    async function replyTicket(ticketId) {
+      const input = document.getElementById("reply-" + ticketId);
+      const replyContent = input.value.trim();
+      if (!replyContent) return;
+      await fetch("/api/handoff/reply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ticketId, replyContent })
+      });
+      await refreshOverview();
+      await loadMessages();
+    }
+
+    async function refreshOverview() {
+      const res = await fetch("/api/overview");
+      const data = await res.json();
+      document.getElementById("modeBadge").textContent = "运行模式: " + data.mode;
+
+      const latestVer = data.datasetVersions[0];
+      const distBox = document.getElementById("distBars");
+      if (latestVer) {
+        const dist = latestVer.classDistribution;
+        const maxVal = Math.max(1, ...Object.values(dist));
+        distBox.innerHTML = `<div class="meta" style="margin-bottom:8px;">版本 ${latestVer.version} | 策略: ${latestVer.balanceStrategy} | Seed: ${latestVer.seed} | 总样本: ${latestVer.totalCount}</div>` +
+          Object.entries(dist).map(([k, v]) => `
+            <div class="bar-row">
+              <span class="bar-label">${k}</span>
+              <div class="bar-track"><div class="bar-fill" style="width:${(v / maxVal) * 100}%"></div></div>
+              <span>${v}</span>
+            </div>
+          `).join("");
+      }
+
+      document.getElementById("jobsBody").innerHTML = data.trainingJobs.map(j => `
+        <tr>
+          <td>${j.jobType}</td>
+          <td>${j.targetModel} ${j.hyperparams?.balanceStrategy ? `(${j.hyperparams.balanceStrategy})` : ""}</td>
+          <td>${j.seed}</td>
+          <td>${j.sampleCount}</td>
+          <td>${j.metrics ? j.metrics.accuracy : "-"}</td>
+          <td>${j.metrics ? j.metrics.macroF1 : "-"}</td>
+        </tr>
+      `).join("");
+
+      document.getElementById("ticketsBody").innerHTML = data.tickets.map(t => `
+        <tr>
+          <td>${t.id.slice(0, 8)}</td>
+          <td>${t.sessionId}</td>
+          <td>${t.reason}</td>
+          <td>${escapeHtml(t.summary)}</td>
+          <td>${t.status}</td>
+          <td>
+            <div class="row">
+              <input type="text" id="reply-${t.id}" placeholder="输入人工回复..." style="min-width:160px;" />
+              <button class="primary" onclick="replyTicket('${t.id}')">认领并回复</button>
+            </div>
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, s => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[s]));
+    }
+
+    refreshOverview();
+    loadMessages();
+  </script>
+</body>
+</html>

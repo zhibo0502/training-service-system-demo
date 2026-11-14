@@ -4,7 +4,7 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "echo 'TODO: 初始化 Next.js 前端应用'",
+    "dev": "node ./src/server.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit"
   },

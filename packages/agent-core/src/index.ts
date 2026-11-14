@@ -1,4 +1,6 @@
 /**
- * 离线客服核心模块：负责意图判断、向量检索、Ollama 本地推理与人工接管。
+ * 离线客服核心模块：负责检索问答、Ollama 对话编排与人工接管状态机
  */
-export const AGENT_CORE_MODULE = "@ts-qa/agent-core";
+export * from "./llm-client.ts";
+export * from "./handoff-policy.ts";
+export * from "./service.ts";

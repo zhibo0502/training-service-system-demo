@@ -1,0 +1,21 @@
+{"question":"请问会员积分怎么兑换优惠券？","answer":"进入个人中心积分商城即可选择对应面额优惠券兑换。","category":"consultation"}
+{"question":"你们客服工作时间是几点到几点？","answer":"人工客服每日 9:00 至 22:00 在线为您服务。","category":"咨询"}
+{"question":"如何修改账户绑定的手机号13812345678？","answer":"请点击账户安全页面验证原手机号或联系邮箱 help@example.com 协助处理。","category":"consultation"}
+{"question":"下单后可以开发票吗？","answer":"订单完成后可在订单详情页申请电子普通发票或增值税专用发票。","category":"consultation"}
+{"question":"新用户首单有什么优惠活动？","answer":"新用户注册即可领取满 100 减 20 元新人专享券。","category":"consultation"}
+{"question":"请问支持货到付款吗？","answer":"目前仅支持在线支付，暂不支持货到付款。","category":"consultation"}
+{"question":"优惠券过期了还能补发吗？","answer":"系统自动发放的过期优惠券不支持补发，请留意有效期。","category":"consultation"}
+{"question":"请问会员积分怎么兑换优惠券？","answer":"重复问题用于验证去重。","category":"consultation"}
+{"question":"我的快递三天没更新物流信息了怎么办？","answer":"已为您提交快递催件单，通常 24 小时内会更新最新中转状态。","category":"logistics"}
+{"question":"顺丰单号什么时候能发出？","answer":"现货商品每日 16:00 前付款当日发出，之后次日发出。","category":"物流"}
+{"question":"包裹显示已签收但我本人没收到怎么处理？","answer":"请先核实代收点或门卫，如仍未找到请联系我们核实派送底单。","category":"logistics"}
+{"question":"可以指定发京东快递吗？","answer":"下单备注优先匹配，偏远地区将根据实际网点调整承运商。","category":"logistics"}
+{"question":"发货后还能修改收货地址吗？","answer":"包裹发出后需由客服协助联系快递拦截改址，可能产生转寄费用。","category":"logistics"}
+{"question":"我想申请七天无理由退货怎么操作？","answer":"保持商品完好并在订单页点击申请售后，填写退回快递单号即可。","category":"refund"}
+{"question":"退款申请通过后几天到账？","answer":"审核通过后原路退回，微信/支付宝通常 1-3 个工作日到账。","category":"退款"}
+{"question":"收到的衣服尺码不合适可以换货吗？","answer":"支持签收 7 日内免费换货一次，请在售后页面选择换货原因。","category":"refund"}
+{"question":"只退部分商品优惠券怎么算？","answer":"部分退款将按商品实付金额比例退还，满减券不退回。","category":"refund"}
+{"question":"你们客服态度太差了我要投诉！","answer":"非常抱歉给您带来不佳体验，已升级至投诉专员并在 2 小时内回电处理。","category":"complaint"}
+{"question":"商品收到就是破损的而且一直不处理，我要维权投诉！","answer":"十分抱歉，请上传破损照片，我们将优先为您安排补发或全额赔付。","category":"投诉"}
+{"question":"虚假宣传发货时间，拖延一周不发货我要举报！","answer":"已记录您的延迟发货投诉，系统将按平台规则为您发放延迟赔付红包。","category":"complaint"}
+{"question":"多次反馈质量问题无人跟进，要求主管回电！","answer":"已为您标记加急客诉工单，客服主管将在 1 小时内致电跟进。","category":"complaint"}
