@@ -12,6 +12,7 @@ export * from "./prng.ts";
 export * from "./sanitizer.ts";
 export * from "./category-mapper.ts";
 export * from "./balancer.ts";
+export * from "./synthesizer.ts";
 
 /**
  * 端到端数据清洗与均衡落库流水线

@@ -270,7 +270,10 @@
         </div>
         <div class="row">
           <button class="primary" onclick="runExperiment()">开始清洗均衡、训练并评测</button>
-          <button class="ghost" style="border-color:var(--ok);color:var(--ok);font-weight:600;" onclick="autoTune()">⚡ 一键自动化调参 (Val 寻优 -> Test 盲测)</button>
+          <button class="ghost" style="border-color:var(--ok);color:var(--ok);font-weight:600;" onclick="autoTune()">⚡ 一键自动化调参 (算法/策略/N-gram/Alpha)</button>
+          <label style="font-size:12px;display:flex;align-items:center;gap:4px;">
+            <input type="checkbox" id="multiSeedCheck" checked /> 多种子稳健寻优 (3 Seeds × 5-Fold CV)
+          </label>
           <span id="runStatus" class="meta" style="margin:0;"></span>
         </div>
       </div>
@@ -335,6 +338,7 @@
 
   <script>
     let currentSessionId = "demo-session-" + Date.now();
+    let lastReplyMeta = { activeModel: "", predictedCategory: "" };
 
     function switchTab(name, btn) {
       document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
@@ -366,11 +370,16 @@
       if (!content) return;
       input.value = "";
 
-      await fetch("/api/chat/send", {
+      const res = await fetch("/api/chat/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId: currentSessionId, content })
       });
+      const data = await res.json();
+      lastReplyMeta = {
+        activeModel: data.activeModel || "",
+        predictedCategory: data.predictedCategory || ""
+      };
       await loadMessages();
       await refreshOverview();
     }
@@ -380,11 +389,19 @@
       const data = await res.json();
       const box = document.getElementById("chatBox");
       box.innerHTML = "";
-      for (const m of data.messages) {
+      for (let i = 0; i < data.messages.length; i++) {
+        const m = data.messages[i];
+        const isLastMsg = i === data.messages.length - 1;
         const div = document.createElement("div");
         div.className = "msg " + m.role;
         let meta = "";
-        if (m.confidence !== undefined) meta += `置信度: ${m.confidence}`;
+        if (isLastMsg && m.role !== "customer" && lastReplyMeta.predictedCategory) {
+          meta += `识别意图: ${lastReplyMeta.predictedCategory}`;
+        }
+        if (lastReplyMeta.activeModel && isLastMsg && m.role === "assistant") {
+          meta += (meta ? " | " : "") + `模型: ${lastReplyMeta.activeModel}`;
+        }
+        if (m.confidence !== undefined) meta += (meta ? " | " : "") + `置信度: ${m.confidence}`;
         if (m.citations && m.citations.length > 0) meta += ` | 引用命中 ${m.citations.length} 条`;
 
         let extraHtml = "";
@@ -462,7 +479,10 @@
     }
 
     async function autoTune() {
-      document.getElementById("runStatus").textContent = "正在 Val 验证集网格搜索 45 组超参数...";
+      const multiSeed = document.getElementById("multiSeedCheck").checked;
+      document.getElementById("runStatus").textContent = multiSeed
+        ? "正在执行 3 Seeds × 5-Fold CV 跨算法搜索 48 组配置..."
+        : "正在执行单 Seed 5-Fold CV 跨算法搜索 48 组配置...";
       const seed = Number(document.getElementById("seedInput").value || 42);
       const [train, val, test] = document.getElementById("splitPresetSelect").value.split(",").map(Number);
 
@@ -471,18 +491,21 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           seed,
+          multiSeed,
           splitRatio: { train, val, test }
         })
       });
       const data = await res.json();
       if (data.bestParams) {
         const bp = data.bestParams;
+        document.getElementById("classifierSelect").value = bp.classifierType;
+        toggleNbParams();
         document.getElementById("strategySelect").value = bp.balanceStrategy;
         document.getElementById("ngramSelect").value = String(bp.ngramMax);
         document.getElementById("alphaSlider").value = String(bp.alpha);
         document.getElementById("alphaValLabel").textContent = String(bp.alpha);
         document.getElementById("runStatus").textContent =
-          `自动化调参完成（共搜索 ${data.trials} 组）：Val 最优参数 [${bp.balanceStrategy}, n=1..${bp.ngramMax}, alpha=${bp.alpha}]，Test Macro-F1=${(data.finalResult.evalJob.metrics.macroF1 * 100).toFixed(1)}%`;
+          `自动化调参完成（${data.trials} 组配置 × ${bp.seedsEvaluated} Seeds × 5-Fold）：最优 [${bp.classifierType}, ${bp.balanceStrategy}, n=1..${bp.ngramMax}, alpha=${bp.alpha}]，CV 平均 F1=${(bp.valMacroF1 * 100).toFixed(1)}%，Test F1=${(data.finalResult.evalJob.metrics.macroF1 * 100).toFixed(1)}%`;
       }
       await refreshOverview();
     }

@@ -12,7 +12,9 @@
     "dev": "npm run dev --workspace=@ts-qa/web",
     "build": "npm run build --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "test": "node --test packages/*/test/*.test.ts apps/*/test/*.test.ts"
+    "test": "node --test packages/*/test/*.test.ts apps/*/test/*.test.ts",
+    "synth-data": "node ./scripts/synth-and-train.ts",
+    "eval-compare": "node ./scripts/eval-synth-vs-small.ts"
   },
   "engines": {
     "node": ">=20.0.0"

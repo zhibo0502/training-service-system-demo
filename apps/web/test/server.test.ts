@@ -93,22 +93,30 @@ test("Web HTTP 服务端到端测试：初始化基线、问答、实验复现�
     });
     assert.equal(promoteRes.status, 200);
 
-    // 6. 一键自动化调参（Val 寻优 -> Test 盲测）
+    // 6. 一键自动化调参（跨算法 + 多种子 × 5-Fold CV -> Test 盲测）
     const tuneRes = (await (
       await fetch(`${baseUrl}/api/pipeline/autotune`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           seed: 42,
+          multiSeed: true,
           splitRatio: { train: 0.7, val: 0.15, test: 0.15 },
         }),
       })
     ).json()) as {
       trials: number;
-      bestParams: { balanceStrategy: string; ngramMax: number; alpha: number };
+      bestParams: {
+        classifierType: string;
+        balanceStrategy: string;
+        ngramMax: number;
+        alpha: number;
+        seedsEvaluated: number;
+      };
       finalResult: { evalJob: { metrics?: { macroF1: number } } };
     };
-    assert.equal(tuneRes.trials, 45);
+    assert.equal(tuneRes.trials, 48);
+    assert.equal(tuneRes.bestParams.seedsEvaluated, 3);
     assert.ok(tuneRes.bestParams.ngramMax >= 1);
     assert.ok((tuneRes.finalResult.evalJob.metrics?.macroF1 ?? 0) > 0);
   } finally {

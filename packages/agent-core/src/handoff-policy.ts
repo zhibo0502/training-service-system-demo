@@ -7,6 +7,7 @@ export interface HandoffDecision {
 
 /**
  * 评估当前对话是否应触发转人工客服
+ * 原则：常见投诉先由 AI 给出安抚与标准处理方案，仅在明确要求、高危安全/监管升级、低置信度或连续点踩时转人工
  */
 export function evaluateHandoffNeed(params: {
   customerText: string;
@@ -15,17 +16,18 @@ export function evaluateHandoffNeed(params: {
   minConfidenceThreshold?: number;
   recentMessages?: readonly ChatMessage[];
 }): HandoffDecision {
-  const threshold = params.minConfidenceThreshold ?? 0.35;
+  const threshold = params.minConfidenceThreshold ?? 0.25;
   const text = params.customerText.trim();
 
-  if (/转人工|人工客服|找人工|找主管|我要投诉|立即投诉/.test(text)) {
+  if (/转人工|人工客服|找人工|找主管|人工专员/.test(text)) {
     return {
       shouldHandoff: true,
       reason: "user_requested",
     };
   }
 
-  if (params.predictedCategory === "complaint" && params.topScore < 0.6) {
+  // 安全隐患或监管/极端升级场景直接触发人工介入
+  if (/冒烟|焦糊|起火|触电|12315|起诉|报警|辱骂/.test(text)) {
     return {
       shouldHandoff: true,
       reason: "policy_blocked",

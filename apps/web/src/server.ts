@@ -4,6 +4,7 @@ import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { BalanceStrategy, ChatMessage } from "@ts-qa/shared";
 import {
+  FallbackAwareLlmClient,
   OfflineAgentService,
   OllamaLlmClient,
   TemplateFallbackLlmClient,
@@ -22,11 +23,12 @@ import {
 import {
   CharNgramNaiveBayesClassifier,
   evaluateIntentClassifier,
-  LocalNgramEmbedder,
+  HybridSemanticEmbedder,
   LocalVectorStore,
   OllamaEmbedder,
   runIntentEvalJob,
   runRagIndexJob,
+  TrainedTfidfEmbedder,
 } from "../../../packages/trainer/src/index.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -40,23 +42,55 @@ const htmlPath = resolve(__dirname, "../public/index.html");
 export interface AppServerOptions {
   dataDir?: string;
   useOllama?: boolean;
+  useOllamaEmbed?: boolean;
+  ollamaBaseUrl?: string;
+  ollamaChatModel?: string;
+  ollamaEmbedModel?: string;
   corpusPath?: string;
 }
 
 export async function createAppServer(options?: AppServerOptions) {
   const dataDir = options?.dataDir ?? resolve(repoRoot, "data");
   const useOllama = options?.useOllama ?? process.env.USE_OLLAMA === "1";
+  const useOllamaEmbed =
+    options?.useOllamaEmbed ?? (useOllama && process.env.OLLAMA_EMBED === "1");
+  const ollamaBaseUrl =
+    options?.ollamaBaseUrl ??
+    process.env.OLLAMA_BASE_URL ??
+    "http://127.0.0.1:11434";
+  const ollamaChatModel =
+    options?.ollamaChatModel ?? process.env.OLLAMA_CHAT_MODEL ?? "qwen2.5:3b";
+  const ollamaEmbedModel =
+    options?.ollamaEmbedModel ?? process.env.OLLAMA_EMBED_MODEL ?? "bge-m3";
   const corpusPath = options?.corpusPath ?? defaultCorpusPath;
   const importedFiles = new Set<string>([corpusPath]);
 
   const store = new SqliteStore(join(dataDir, "demo.sqlite"));
   const vectorStore = new LocalVectorStore(join(dataDir, "vectors.json"));
-  const embedder = useOllama
-    ? new OllamaEmbedder()
-    : new LocalNgramEmbedder();
-  const llmClient = useOllama
-    ? new OllamaLlmClient()
-    : new TemplateFallbackLlmClient();
+  const trainedEmbedder = new TrainedTfidfEmbedder({ ngramMax: 2 });
+  const ollamaEmbedder = useOllamaEmbed
+    ? new OllamaEmbedder({
+        baseUrl: ollamaBaseUrl,
+        modelName: ollamaEmbedModel,
+      })
+    : undefined;
+  const embedder = ollamaEmbedder
+    ? new HybridSemanticEmbedder({
+        semanticEmbedder: ollamaEmbedder,
+        lexicalEmbedder: trainedEmbedder,
+        semanticWeight: 0.65,
+      })
+    : trainedEmbedder;
+  const ollamaLlm = useOllama
+    ? new OllamaLlmClient({
+        baseUrl: ollamaBaseUrl,
+        modelName: ollamaChatModel,
+      })
+    : undefined;
+  const fallbackLlm = new TemplateFallbackLlmClient();
+  const llmClient = ollamaLlm
+    ? new FallbackAwareLlmClient(ollamaLlm, fallbackLlm)
+    : fallbackLlm;
 
   const agentService = new OfflineAgentService({
     store,
@@ -140,6 +174,22 @@ export async function createAppServer(options?: AppServerOptions) {
     const prevBestJob = getBestHistoricalEvalJob();
     const prevBestF1 = prevBestJob?.metrics?.macroF1 ?? -1;
 
+    // 让检索向量直接从当前训练集学习词表与 IDF（受 ngramMax 与均衡策略影响）
+    const activeLexicalEmbedder = new TrainedTfidfEmbedder({
+      ngramMax: params.ngramMax,
+    });
+    activeLexicalEmbedder.fit(
+      cleaned.chunks.map((c) => c.content),
+      params.ngramMax
+    );
+    const activeEmbedder = ollamaEmbedder
+      ? new HybridSemanticEmbedder({
+          semanticEmbedder: ollamaEmbedder,
+          lexicalEmbedder: activeLexicalEmbedder,
+          semanticWeight: 0.65,
+        })
+      : activeLexicalEmbedder;
+
     // 先在临时向量索引或当前索引做评测；为保护线上最佳版本，仅当优于等于历史最佳或首次时才替换线上向量与分类器
     const tempVectorStore = new LocalVectorStore();
     const evalVectorStore =
@@ -147,7 +197,7 @@ export async function createAppServer(options?: AppServerOptions) {
 
     const ragJob = await runRagIndexJob(
       cleaned.chunks,
-      embedder,
+      activeEmbedder,
       evalVectorStore,
       store,
       { datasetVersionId: cleaned.datasetVersion.id, seed: params.seed }
@@ -158,7 +208,7 @@ export async function createAppServer(options?: AppServerOptions) {
       seed: params.seed,
       targetModel,
       evalSplit: params.evalSplit,
-      ragEval: { embedder, vectorStore: evalVectorStore, topK: 3 },
+      ragEval: { embedder: activeEmbedder, vectorStore: evalVectorStore, topK: 3 },
       hyperparams: {
         balanceStrategy: params.balanceStrategy,
         evalSplit: params.evalSplit,
@@ -174,6 +224,10 @@ export async function createAppServer(options?: AppServerOptions) {
     const newF1 = evalJob.metrics?.macroF1 ?? 0;
     const promotedToLive = newF1 >= prevBestF1;
     if (promotedToLive) {
+      trainedEmbedder.fit(
+        cleaned.chunks.map((c) => c.content),
+        params.ngramMax
+      );
       if (evalVectorStore !== vectorStore) {
         await runRagIndexJob(cleaned.chunks, embedder, vectorStore, store, {
           datasetVersionId: cleaned.datasetVersion.id,
@@ -221,12 +275,21 @@ export async function createAppServer(options?: AppServerOptions) {
     if (bestJob && bestDataset) {
       const savedSamples = store.listQaSamples(bestDataset.id);
       const hp = bestJob.hyperparams ?? {};
+      const ngramMax = Number(hp.ngramMax ?? 2);
       const { predictFn, targetModel } = buildPredictorFromSamples(
         savedSamples,
         (hp.classifierType as "naive_bayes" | "keyword_baseline") ?? "naive_bayes",
-        Number(hp.ngramMax ?? 2),
+        ngramMax,
         Number(hp.alpha ?? 1.0)
       );
+      const storedVectors = vectorStore.listRecords();
+      const fitTexts =
+        storedVectors.length > 0
+          ? storedVectors.map((v) => v.content)
+          : savedSamples
+              .filter((s) => s.split === "train")
+              .map((s) => `问题：${s.question}\n标准回答：${s.answer}`);
+      trainedEmbedder.fit(fitTexts, ngramMax);
       agentService.setIntentPredictor(predictFn);
       activeModelLabel = `${targetModel} (${bestDataset.version})`;
     }
@@ -245,8 +308,25 @@ export async function createAppServer(options?: AppServerOptions) {
       }
 
       if (req.method === "GET" && pathname === "/api/overview") {
+        const ollamaHealth = ollamaLlm
+          ? await ollamaLlm.checkHealth(1500)
+          : undefined;
         return sendJson(res, 200, {
-          mode: useOllama ? "ollama" : "offline-fallback",
+          mode: useOllama
+            ? useOllamaEmbed
+              ? "ollama-dual-recall"
+              : "ollama-hybrid"
+            : "offline-fallback",
+          ollama: {
+            enabled: useOllama,
+            embedMode: useOllamaEmbed
+              ? `hybrid(${ollamaEmbedModel}+trained-tfidf)`
+              : "trained-tfidf",
+            chatModel: ollamaChatModel,
+            embedModel: ollamaEmbedModel,
+            available: ollamaHealth?.available ?? false,
+            installedModels: ollamaHealth?.models ?? [],
+          },
           activeModel: activeModelLabel,
           documents: store.listRawDocuments(),
           datasetVersions: store.listDatasetVersions(),
@@ -324,9 +404,14 @@ export async function createAppServer(options?: AppServerOptions) {
       if (req.method === "POST" && pathname === "/api/pipeline/autotune") {
         const body = (await readJsonBody(req)) as {
           seed?: number;
+          multiSeed?: boolean;
           splitRatio?: { train: number; val: number; test: number };
         };
         const seed = Number(body.seed ?? 42);
+        const useMultiSeed = body.multiSeed ?? true;
+        const evalSeeds = useMultiSeed
+          ? Array.from(new Set([seed, 7, 2026]))
+          : [seed];
         const trainR = Number(body.splitRatio?.train ?? 0.8);
         const valR = Number(body.splitRatio?.val ?? 0.1);
         const testR = Number(body.splitRatio?.test ?? 0.1);
@@ -364,100 +449,137 @@ export async function createAppServer(options?: AppServerOptions) {
 
         const strategies: BalanceStrategy[] = ["undersample", "oversample", "stratified"];
         const ngramList = [1, 2, 3];
-        // 移除易过拟合的极小 alpha=0.1，改用稳健平滑网格 + 5 折交叉验证
         const alphaList = [0.3, 0.5, 1.0, 1.5, 2.0];
 
-        let bestScore = -1;
-        let bestParams: {
+        type CandidateConfig = {
+          classifierType: "naive_bayes" | "keyword_baseline";
           balanceStrategy: BalanceStrategy;
           ngramMax: number;
           alpha: number;
+        };
+
+        const configs: CandidateConfig[] = [];
+        for (const balanceStrategy of strategies) {
+          configs.push({
+            classifierType: "keyword_baseline",
+            balanceStrategy,
+            ngramMax: 2,
+            alpha: 1.0,
+          });
+          for (const ngramMax of ngramList) {
+            for (const alpha of alphaList) {
+              configs.push({
+                classifierType: "naive_bayes",
+                balanceStrategy,
+                ngramMax,
+                alpha,
+              });
+            }
+          }
+        }
+
+        let bestScore = -1;
+        let bestParams: CandidateConfig & {
           valMacroF1: number;
           valAccuracy: number;
+          seedsEvaluated: number;
         } = {
+          classifierType: "naive_bayes",
           balanceStrategy: "undersample",
           ngramMax: 2,
           alpha: 1.0,
           valMacroF1: 0,
           valAccuracy: 0,
+          seedsEvaluated: evalSeeds.length,
         };
-        let trials = 0;
 
-        // 严格锁死 Test 集，仅在非测试样本上做 5 折分层交叉验证寻优，防止 Val 过拟合总选最小 Alpha
-        for (const balanceStrategy of strategies) {
-          const splitOut = balanceAndSplitSamples(candidates, {
-            version: "autotune-tmp",
-            seed,
-            balanceStrategy,
-            splitRatio,
-          });
-          const devSamples = splitOut.samples.filter((s) => s.split !== "test");
-          const kFolds = 5;
-
-          for (const ngramMax of ngramList) {
-            for (const alpha of alphaList) {
-              trials += 1;
-              let f1Sum = 0;
-              let accSum = 0;
-
-              for (let fold = 0; fold < kFolds; fold += 1) {
-                const foldVal = devSamples.filter((_, idx) => idx % kFolds === fold);
-                const foldTrain = devSamples.filter((_, idx) => idx % kFolds !== fold);
-                if (foldVal.length === 0 || foldTrain.length === 0) continue;
-
-                const nb = new CharNgramNaiveBayesClassifier({
-                  ngramMin: 1,
-                  ngramMax,
-                  alpha,
-                });
-                nb.fit(foldTrain);
-                const metrics = await evaluateIntentClassifier(foldVal, (q) =>
-                  nb.predict(q)
-                );
-                f1Sum += metrics.macroF1;
-                accSum += metrics.accuracy;
-              }
-
-              const avgF1 = Number((f1Sum / kFolds).toFixed(4));
-              const avgAcc = Number((accSum / kFolds).toFixed(4));
-
-              // 同分时优先选择更大 alpha（更强正则防过拟合）
-              const isBetter =
-                avgF1 > bestScore ||
-                (avgF1 === bestScore && avgAcc > bestParams.valAccuracy) ||
-                (avgF1 === bestScore &&
-                  avgAcc === bestParams.valAccuracy &&
-                  alpha > bestParams.alpha);
-
-              if (isBetter) {
-                bestScore = avgF1;
-                bestParams = {
-                  balanceStrategy,
-                  ngramMax,
-                  alpha,
-                  valMacroF1: avgF1,
-                  valAccuracy: avgAcc,
-                };
-              }
-            }
+        const kFolds = 5;
+        // 预先为每个 seed × strategy 生成防泄露非测试集，避免内层循环重复切分
+        const devCache = new Map<string, ReturnType<typeof balanceAndSplitSamples>["samples"]>();
+        for (const s of evalSeeds) {
+          for (const balanceStrategy of strategies) {
+            const splitOut = balanceAndSplitSamples(candidates, {
+              version: "autotune-tmp",
+              seed: s,
+              balanceStrategy,
+              splitRatio,
+            });
+            devCache.set(
+              `${s}-${balanceStrategy}`,
+              splitOut.samples.filter((item) => item.split !== "test")
+            );
           }
         }
 
-        // 用 Val 选出的最优参数在 Test 集做最终盲测并落库
+        // 在多种子 × 5 折交叉验证下搜索最稳健超参数，严格锁死 Test 集
+        for (const cfg of configs) {
+          let totalF1 = 0;
+          let totalAcc = 0;
+          let evalCount = 0;
+
+          for (const s of evalSeeds) {
+            const devSamples = devCache.get(`${s}-${cfg.balanceStrategy}`) ?? [];
+            for (let fold = 0; fold < kFolds; fold += 1) {
+              const foldVal = devSamples.filter((_, idx) => idx % kFolds === fold);
+              const foldTrain = devSamples.filter((_, idx) => idx % kFolds !== fold);
+              if (foldVal.length === 0 || foldTrain.length === 0) continue;
+
+              let predictFn: (q: string) => ReturnType<typeof mapToStandardCategory>;
+              if (cfg.classifierType === "naive_bayes") {
+                const nb = new CharNgramNaiveBayesClassifier({
+                  ngramMin: 1,
+                  ngramMax: cfg.ngramMax,
+                  alpha: cfg.alpha,
+                });
+                nb.fit(foldTrain);
+                predictFn = (q) => nb.predict(q);
+              } else {
+                predictFn = (q) => mapToStandardCategory(undefined, q);
+              }
+
+              const metrics = await evaluateIntentClassifier(foldVal, predictFn);
+              totalF1 += metrics.macroF1;
+              totalAcc += metrics.accuracy;
+              evalCount += 1;
+            }
+          }
+
+          const avgF1 = evalCount > 0 ? Number((totalF1 / evalCount).toFixed(4)) : 0;
+          const avgAcc = evalCount > 0 ? Number((totalAcc / evalCount).toFixed(4)) : 0;
+
+          const isBetter =
+            avgF1 > bestScore ||
+            (avgF1 === bestScore && avgAcc > bestParams.valAccuracy) ||
+            (avgF1 === bestScore &&
+              avgAcc === bestParams.valAccuracy &&
+              cfg.alpha > bestParams.alpha);
+
+          if (isBetter) {
+            bestScore = avgF1;
+            bestParams = {
+              ...cfg,
+              valMacroF1: avgF1,
+              valAccuracy: avgAcc,
+              seedsEvaluated: evalSeeds.length,
+            };
+          }
+        }
+
+        // 用多轮寻优选出的最优配置在主 Seed 的 Test 集做最终盲测并落库
         const finalVersion = `v1.${store.listDatasetVersions().length}.0-auto`;
         const finalResult = await executePipelineRun({
           version: finalVersion,
           seed,
           balanceStrategy: bestParams.balanceStrategy,
           splitRatio,
-          classifierType: "naive_bayes",
+          classifierType: bestParams.classifierType,
           ngramMax: bestParams.ngramMax,
           alpha: bestParams.alpha,
           evalSplit: "test",
         });
 
         return sendJson(res, 200, {
-          trials,
+          trials: configs.length,
           bestParams,
           finalResult,
         });
@@ -485,7 +607,10 @@ export async function createAppServer(options?: AppServerOptions) {
           customerId: body.customerId ?? "demo-customer",
           content: body.content.trim(),
         });
-        return sendJson(res, 200, result);
+        return sendJson(res, 200, {
+          ...result,
+          activeModel: activeModelLabel,
+        });
       }
 
       if (req.method === "POST" && pathname === "/api/chat/feedback") {

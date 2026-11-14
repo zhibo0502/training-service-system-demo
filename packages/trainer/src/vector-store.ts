@@ -51,6 +51,10 @@ export class LocalVectorStore {
     return this.records.size;
   }
 
+  listRecords(): VectorRecord[] {
+    return Array.from(this.records.values());
+  }
+
   search(queryVector: readonly number[], topK = 3): VectorSearchHit[] {
     const scored: VectorSearchHit[] = [];
 
