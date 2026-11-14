@@ -1,0 +1,18 @@
+{
+  "name": "@ts-qa/web",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "echo 'TODO: 初始化 Next.js 前端应用'",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ts-qa/shared": "*",
+    "@ts-qa/collector": "*",
+    "@ts-qa/cleaner": "*",
+    "@ts-qa/trainer": "*",
+    "@ts-qa/agent-core": "*"
+  }
+}

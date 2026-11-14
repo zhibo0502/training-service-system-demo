@@ -1,0 +1,19 @@
+{
+  "name": "training-service-system-demo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "培训-客服系统demo：基于 TypeScript 的离线客户问答与客服系统最小可行架构",
+  "license": "MIT",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=@ts-qa/web",
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
