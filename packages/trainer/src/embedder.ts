@@ -119,11 +119,13 @@ const SEMANTIC_CONCEPT_GROUPS: ReadonlyArray<readonly [string, readonly string[]
 export class TrainedTfidfEmbedder implements Embedder {
   modelName: string;
   private ngramMax: number;
+  private readonly maxFeatures: number;
   private vocabIndex = new Map<string, number>();
   private idfWeights: number[] = [];
 
-  constructor(options?: { ngramMax?: number }) {
+  constructor(options?: { ngramMax?: number; maxFeatures?: number }) {
     this.ngramMax = options?.ngramMax ?? 2;
+    this.maxFeatures = options?.maxFeatures ?? 1024;
     this.modelName = `trained-tfidf(n=1..${this.ngramMax})`;
   }
 
@@ -144,8 +146,24 @@ export class TrainedTfidfEmbedder implements Embedder {
     }
 
     const totalDocs = Math.max(1, texts.length);
+    const conceptEntries: Array<[string, number]> = [];
+    const ngramEntries: Array<[string, number]> = [];
+    for (const entry of docFreq.entries()) {
+      if (entry[0].startsWith("__concept_")) {
+        conceptEntries.push(entry);
+      } else {
+        ngramEntries.push(entry);
+      }
+    }
+    ngramEntries.sort((a, b) => b[1] - a[1]);
+    const remainingSlots = Math.max(0, this.maxFeatures - conceptEntries.length);
+    const selectedEntries = [
+      ...conceptEntries,
+      ...ngramEntries.slice(0, remainingSlots),
+    ];
+
     let idx = 0;
-    for (const [tok, df] of docFreq.entries()) {
+    for (const [tok, df] of selectedEntries) {
       this.vocabIndex.set(tok, idx);
       this.idfWeights.push(Math.log((totalDocs + 1) / (df + 1)) + 1);
       idx += 1;
