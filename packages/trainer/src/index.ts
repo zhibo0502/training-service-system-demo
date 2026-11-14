@@ -7,7 +7,7 @@ import type {
   TrainingJob,
 } from "@ts-qa/shared";
 import type { Embedder } from "./embedder.ts";
-import { evaluateIntentClassifier } from "./evaluator.ts";
+import { evaluateIntentClassifier, evaluateRagHitAtK } from "./evaluator.ts";
 import type { LocalVectorStore } from "./vector-store.ts";
 
 export * from "./embedder.ts";
@@ -39,7 +39,7 @@ export async function runRagIndexJob(
     });
   }
 
-  vectorStore.upsert(vectors);
+  vectorStore.replaceAll(vectors);
 
   const job: TrainingJob = {
     id: randomUUID(),
@@ -73,6 +73,11 @@ export async function runIntentEvalJob(
     targetModel: string;
     evalSplit?: "val" | "test";
     hyperparams?: Record<string, string | number | boolean>;
+    ragEval?: {
+      embedder: Embedder;
+      vectorStore: LocalVectorStore;
+      topK?: number;
+    };
   }
 ): Promise<TrainingJob> {
   const startedAt = new Date().toISOString();
@@ -81,6 +86,14 @@ export async function runIntentEvalJob(
   const evalTarget = splitSamples.length > 0 ? splitSamples : samples;
 
   const metrics = await evaluateIntentClassifier(evalTarget, predictCategory);
+  if (options.ragEval) {
+    metrics.ragHitAt3 = await evaluateRagHitAtK(
+      evalTarget,
+      options.ragEval.embedder,
+      options.ragEval.vectorStore,
+      options.ragEval.topK ?? 3
+    );
+  }
 
   const job: TrainingJob = {
     id: randomUUID(),

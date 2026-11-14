@@ -5,6 +5,7 @@ import type {
   ChatSession,
   CitationRef,
   HandoffTicket,
+  QaCategory,
 } from "@ts-qa/shared";
 import type { Embedder, LocalVectorStore } from "@ts-qa/trainer";
 import { evaluateHandoffNeed } from "./handoff-policy.ts";
@@ -14,11 +15,12 @@ export interface AgentReplyResult {
   session: ChatSession;
   customerMessage: ChatMessage;
   assistantMessage: ChatMessage;
+  predictedCategory?: QaCategory;
   ticket?: HandoffTicket;
 }
 
 /**
- * 离线客服核心编排服务：检索 -> 推理/转人工 -> 人工接管
+ * 离线客服核心编排服务：意图识别 -> 检索 -> 推理/转人工 -> 人工接管
  */
 export class OfflineAgentService {
   private readonly store: SqliteStore;
@@ -26,6 +28,7 @@ export class OfflineAgentService {
   private readonly vectorStore: LocalVectorStore;
   private readonly llmClient: LlmClient;
   private readonly minConfidenceThreshold: number;
+  private intentPredictor?: (text: string) => QaCategory;
 
   constructor(deps: {
     store: SqliteStore;
@@ -33,12 +36,18 @@ export class OfflineAgentService {
     vectorStore: LocalVectorStore;
     llmClient: LlmClient;
     minConfidenceThreshold?: number;
+    intentPredictor?: (text: string) => QaCategory;
   }) {
     this.store = deps.store;
     this.embedder = deps.embedder;
     this.vectorStore = deps.vectorStore;
     this.llmClient = deps.llmClient;
     this.minConfidenceThreshold = deps.minConfidenceThreshold ?? 0.35;
+    this.intentPredictor = deps.intentPredictor;
+  }
+
+  setIntentPredictor(predictor: (text: string) => QaCategory): void {
+    this.intentPredictor = predictor;
   }
 
   async handleCustomerMessage(params: {
@@ -90,10 +99,14 @@ export class OfflineAgentService {
     const hits = this.vectorStore.search(queryVec, 3);
     const topScore = hits[0]?.score ?? 0;
     const recentMessages = this.store.listChatMessages(session.id);
+    const predictedCategory = this.intentPredictor
+      ? this.intentPredictor(params.content)
+      : undefined;
 
     const decision = evaluateHandoffNeed({
       customerText: params.content,
       topScore,
+      predictedCategory,
       minConfidenceThreshold: this.minConfidenceThreshold,
       recentMessages,
     });
@@ -133,6 +146,7 @@ export class OfflineAgentService {
         session,
         customerMessage,
         assistantMessage: handoffMessage,
+        predictedCategory,
         ticket,
       };
     }
@@ -182,6 +196,7 @@ export class OfflineAgentService {
       session,
       customerMessage,
       assistantMessage,
+      predictedCategory,
     };
   }
 

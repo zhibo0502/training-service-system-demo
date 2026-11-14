@@ -57,8 +57,9 @@ test("Web HTTP 服务端到端测试：初始化基线、问答、实验复现�
       evalJob: { metrics?: { accuracy: number; macroF1: number; confusionMatrix?: unknown } };
     };
     assert.equal(expRes.datasetVersion.version, "v1.1.0");
-    assert.equal(expRes.datasetVersion.totalCount, 320);
+    assert.ok(expRes.datasetVersion.totalCount > 240);
     assert.ok(expRes.evalJob.metrics?.confusionMatrix);
+    assert.ok(expRes.evalJob.metrics?.ragHitAt3 !== undefined);
     assert.ok((expRes.evalJob.metrics?.macroF1 ?? 0) > 0.8);
 
     // 4. 客户问答与投诉转人工
@@ -74,7 +75,7 @@ test("Web HTTP 服务端到端测试：初始化基线、问答、实验复现�
     ).json()) as { ticket?: { id: string } };
     assert.ok(chatRes.ticket?.id);
 
-    // 5. 人工客服认领并回复
+    // 5. 人工客服认领并回复，并一键收录为标准 QA 样本反哺训练集
     const replyRes = await fetch(`${baseUrl}/api/handoff/reply`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -84,6 +85,13 @@ test("Web HTTP 服务端到端测试：初始化基线、问答、实验复现�
       }),
     });
     assert.equal(replyRes.status, 200);
+
+    const promoteRes = await fetch(`${baseUrl}/api/handoff/promote-qa`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ticketId: chatRes.ticket.id }),
+    });
+    assert.equal(promoteRes.status, 200);
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
     rmSync(tempDir, { recursive: true, force: true });

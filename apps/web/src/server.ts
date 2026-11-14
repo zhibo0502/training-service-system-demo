@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -115,11 +115,15 @@ export async function createAppServer(options?: AppServerOptions) {
       predictFn = (q) => mapToStandardCategory(undefined, q);
     }
 
+    // 热更新在线客服使用的意图识别器，打通“训练 -> 推理”闭环
+    agentService.setIntentPredictor(predictFn);
+
     const evalJob = await runIntentEvalJob(cleaned.samples, predictFn, store, {
       datasetVersionId: cleaned.datasetVersion.id,
       seed: params.seed,
       targetModel,
       evalSplit: params.evalSplit,
+      ragEval: { embedder, vectorStore, topK: 3 },
       hyperparams: {
         balanceStrategy: params.balanceStrategy,
         evalSplit: params.evalSplit,
@@ -301,6 +305,54 @@ export async function createAppServer(options?: AppServerOptions) {
           replyContent: body.replyContent.trim(),
         });
         return sendJson(res, 200, result);
+      }
+
+      if (req.method === "POST" && pathname === "/api/handoff/promote-qa") {
+        const body = (await readJsonBody(req)) as { ticketId?: string };
+        if (!body.ticketId) {
+          return sendJson(res, 400, { error: "缺少 ticketId" });
+        }
+        const ticket = store.getHandoffTicket(body.ticketId);
+        if (!ticket) {
+          return sendJson(res, 404, { error: "工单不存在" });
+        }
+        const messages = store.listChatMessages(ticket.sessionId);
+        const lastCustomer = [...messages]
+          .reverse()
+          .find((m) => m.role === "customer");
+        const lastHuman = [...messages]
+          .reverse()
+          .find((m) => m.role === "human_agent");
+        if (!lastCustomer || !lastHuman) {
+          return sendJson(res, 400, { error: "缺少完整的客户提问或人工回复" });
+        }
+
+        const feedbackPath = join(dataDir, "feedback-qa.jsonl");
+        mkdirSync(dataDir, { recursive: true });
+        if (!existsSync(feedbackPath)) {
+          writeFileSync(feedbackPath, "", "utf-8");
+        }
+        const category = mapToStandardCategory(undefined, lastCustomer.content);
+        appendFileSync(
+          feedbackPath,
+          `${JSON.stringify({
+            question: lastCustomer.content,
+            answer: lastHuman.content,
+            category,
+          })}\n`,
+          "utf-8"
+        );
+        importedFiles.add(feedbackPath);
+        importCorpusFile(feedbackPath, store, {
+          title: "人工客服反哺 QA 语料",
+        });
+
+        return sendJson(res, 200, {
+          ok: true,
+          question: lastCustomer.content,
+          answer: lastHuman.content,
+          category,
+        });
       }
 
       sendJson(res, 404, { error: "Not Found" });

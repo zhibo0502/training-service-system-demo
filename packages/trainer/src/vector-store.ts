@@ -39,6 +39,14 @@ export class LocalVectorStore {
     this.persist();
   }
 
+  replaceAll(items: readonly VectorRecord[]): void {
+    this.records.clear();
+    for (const item of items) {
+      this.records.set(item.id, item);
+    }
+    this.persist();
+  }
+
   size(): number {
     return this.records.size;
   }

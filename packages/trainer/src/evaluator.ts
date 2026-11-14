@@ -5,6 +5,8 @@ import type {
   QaCategory,
   QaSample,
 } from "@ts-qa/shared";
+import type { Embedder } from "./embedder.ts";
+import type { LocalVectorStore } from "./vector-store.ts";
 
 const CATEGORIES: readonly QaCategory[] = [
   "consultation",
@@ -95,6 +97,36 @@ export async function evaluateIntentClassifier(
     confusionMatrix,
     evaluatedCount: testSamples.length,
   };
+}
+
+/**
+ * 评测 RAG 向量检索 Top-K 命中率（Hit@K）：检查 Top-K 中是否命中与标准答案或同类别一致的知识块
+ */
+export async function evaluateRagHitAtK(
+  evalSamples: readonly QaSample[],
+  embedder: Embedder,
+  vectorStore: LocalVectorStore,
+  topK = 3
+): Promise<number> {
+  if (evalSamples.length === 0 || vectorStore.size() === 0) {
+    return 0;
+  }
+
+  let hitsCount = 0;
+  for (const sample of evalSamples) {
+    const queryVec = await embedder.embed(sample.question);
+    const hits = vectorStore.search(queryVec, topK);
+    const hitMatched = hits.some(
+      (h) =>
+        h.record.content.includes(sample.answer) ||
+        h.record.category === sample.category
+    );
+    if (hitMatched) {
+      hitsCount += 1;
+    }
+  }
+
+  return Number((hitsCount / evalSamples.length).toFixed(4));
 }
 
 /**

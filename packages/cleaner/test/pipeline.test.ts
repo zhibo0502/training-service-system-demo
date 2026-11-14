@@ -3,7 +3,7 @@ import { dirname, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { importCorpusFile, SqliteStore } from "../../collector/src/index.ts";
-import { runCleaningPipeline } from "../src/index.ts";
+import { balanceAndSplitSamples, runCleaningPipeline } from "../src/index.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const fixturePath = resolve(__dirname, "./fixtures/sample-corpus.jsonl");
@@ -41,14 +41,34 @@ test("数据收集、脱敏、去重、样本均衡与可复现切分闭环测�
       complaint: 45,
     });
 
-    // 验证均衡后分布（以最小类 45 条为基准，4 类严格 1:1:1:1 共 180 条）
+    // 验证训练集均衡后分布（先切分 8:1:1 后，min(train)=36，训练集 4 类严格 1:1:1:1）
     assert.deepEqual(run1.datasetVersion.classDistribution, {
-      consultation: 45,
-      logistics: 45,
-      refund: 45,
-      complaint: 45,
+      consultation: 36,
+      logistics: 36,
+      refund: 36,
+      complaint: 36,
     });
-    assert.equal(run1.samples.length, 180);
+    assert.equal(run1.chunks.length, 144);
+
+    // 验证防泄露：oversample 模式下 train 集与 test 集严格零交集
+    const oversampleRun = balanceAndSplitSamples(
+      firstImport.records.map((r) => ({
+        question: r.question,
+        answer: r.answer,
+        category: (r.rawCategory as "consultation") ?? "consultation",
+        sanitized: false,
+      })),
+      { version: "v1.0.1", seed: 42, balanceStrategy: "oversample" }
+    );
+    const trainQuestions = new Set(
+      oversampleRun.samples.filter((s) => s.split === "train").map((s) => s.question)
+    );
+    const testQuestions = oversampleRun.samples
+      .filter((s) => s.split === "test")
+      .map((s) => s.question);
+    for (const tq of testQuestions) {
+      assert.equal(trainQuestions.has(tq), false);
+    }
 
     // 验证脱敏规则（手机号与邮箱均应被替换）
     const sanitizedChunks = run1.chunks.filter((c) => c.sanitized);
@@ -59,7 +79,7 @@ test("数据收集、脱敏、去重、样本均衡与可复现切分闭环测�
 
     // 验证数据库落库与读回一致
     const savedSamples = store.listQaSamples(run1.datasetVersion.id);
-    assert.equal(savedSamples.length, 180);
+    assert.equal(savedSamples.length, run1.samples.length);
 
     // 4. 验证可复现性：使用相同 seed 再跑一次，抽取结果顺序与切分归属完全一致
     const store2 = new SqliteStore(":memory:");

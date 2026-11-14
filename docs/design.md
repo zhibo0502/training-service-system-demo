@@ -54,12 +54,16 @@
 3. `refund`：退货、换货、退款申请与进度
 4. `complaint`：服务态度、商品质量、超时未处理等投诉升级场景
 
-### 3.3 样本均衡与确定性切分规则
+### 3.3 样本均衡与防泄露切分规则
 1. **确定性随机种子**：默认 `seed = 42`（可配置），使用确定性伪随机数生成器（PRNG）执行抽样与洗牌。
-2. **均衡策略（`BalanceStrategy`）**：
-   - `undersample`（默认）：以样本数最少的类别为基准，对其余类别按 `seed` 等量抽样，确保 4 类比例严格为 `1:1:1:1`。
-   - `oversample` / `stratified`：作为可选策略保留，用于对比不同均衡方案对 `macroF1` 的影响。
-3. **防泄露切分**：均衡后的样本按 `8:1:1`（`train / val / test`）确定性切分，并将结果固化在 `QaSample.split` 与 `DatasetVersion` 中。
+2. **先切分、后均衡（杜绝数据泄露）**：
+   - 先在原始各业务类别内部按 `splitRatio`（如 `8:1:1`）确定性划分 `train / val / test` 三个集合。
+   - `val` 与 `test` 保持原始真实样本且绝不复制，也不写入向量检索库。
+   - **仅对 `train` 集执行均衡采样**，确保训练集与验证/测试集严格零交集。
+3. **均衡策略（`BalanceStrategy`）**：
+   - `undersample`（默认）：以 `train` 集中样本最少的类别为基准，对其余类别等量抽样，确保 4 类训练比例为 `1:1:1:1`。
+   - `oversample`：仅对 `train` 集少数类进行循环补齐。
+   - `stratified`：保留原始比例，仅做确定性洗牌。
 
 ---
 
@@ -97,26 +101,26 @@ flowchart LR
    - **去重与过滤**：过滤空文本、纯表情或过短无效寒暄。
    - **均衡与切分**：生成 `DatasetVersion` 快照，记录各类别数量分布，输出均衡的 `QaSample` 与 `CleanChunk`。
 
-4. **`@ts-qa/trainer`（数据训练 — 双轨演示）**
-   - **轨道 A（RAG 向量入库）**：调用本地 Ollama Embedding 接口，将 `CleanChunk` 写入本地向量索引，立即服务问答。
+4. **`@ts-qa/trainer`（数据训练 — 双轨演示与版本隔离）**
+   - **轨道 A（RAG 向量入库）**：每次建库全量替换当前激活版本的向量索引（`replaceAll`），防止跨版本脏数据累积。
    - **轨道 B（意图/投诉分类评测与微调导出）**：
-     - 在 `test` 集上运行本地模型意图识别评测，输出 `accuracy`、`macroF1` 与各类别召回率，记录到 `TrainingJob`。
+     - 使用纯 TS 可训练 `CharNgramNaiveBayesClassifier` 在 `train` 集拟合，并在 `val`/`test` 集输出 `accuracy`、`macroF1`、`ragHitAt3` 及 4x4 混淆矩阵。
      - 导出标准指令微调格式（JSONL）至本地产物目录，供可选的外部 QLoRA 脚本训练升级。
 
 5. **`@ts-qa/agent-core`（离线客服核心）**
-   - 接收用户提问 -> 向量检索 Top-K 知识片段 -> 组装中文客服 Prompt -> 调用本地 Ollama 生成回答并附带引用（`CitationRef`）。
+   - 接收用户提问 -> 热加载最新训练好的意图分类器预判类别 -> 向量检索 Top-K 知识片段 -> 调用本地 Ollama 生成回答并附带引用（`CitationRef`）。
    - **转人工触发条件**：
-     - 检索最高相似度或模型置信度低于阈值（`low_confidence`）
-     - 意图判定为高风险投诉或用户明确要求转人工（`user_requested`）
+     - 检索最高相似度低于阈值（`low_confidence`）
+     - 分类器识别为投诉且置信度不足（`policy_blocked`）或用户明确要求转人工（`user_requested`）
      - 连续 2 轮被客户点踩（`repeated_failure`）
    - 触发后自动生成 `HandoffTicket`，会话状态切换为 `handoff_pending`，等待后台人工接管。
 
-6. **`@ts-qa/web`（界面层 — 单应用双视角）**
-   - **客户侧页面**：极简聊天窗口、展示引用来源、支持点踩/点赞与一键转人工。
+6. **`@ts-qa/web`（界面层 — 单应用双视角与数据反哺闭环）**
+   - **客户侧页面**：支持快捷提问、查看引用原文折叠面板、点赞/点踩反馈与一键转人工。
    - **管理与客服侧页面**：
-     - 数据集与均衡看板（展示 4 类样本柱状图与 `DatasetVersion` 记录）
-     - 实验评测对比页（对比不同版本/策略的 `accuracy` 与 `macroF1`）
-     - 人工客服接管台（认领 `handoff_pending` 工单并手动回复，优质回复可一键转存为新 `QaSample`）
+     - 数据集导入与均衡看板（支持上传外部 CSV/JSONL 语料、调节 `seed`/`splitRatio`/`alpha`/`ngramMax`）
+     - 实验评测对比页（展示 `Accuracy`、`Macro-F1`、`RAG Hit@3` 与混淆矩阵）
+     - 人工客服接管台（认领 `handoff_pending` 工单并回复，支持**一键收录为标准 QA 样本**反哺下一轮训练）
 
 ---
 

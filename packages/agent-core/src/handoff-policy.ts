@@ -1,4 +1,4 @@
-import type { ChatMessage, HandoffReason } from "@ts-qa/shared";
+import type { ChatMessage, HandoffReason, QaCategory } from "@ts-qa/shared";
 
 export interface HandoffDecision {
   shouldHandoff: boolean;
@@ -11,6 +11,7 @@ export interface HandoffDecision {
 export function evaluateHandoffNeed(params: {
   customerText: string;
   topScore: number;
+  predictedCategory?: QaCategory;
   minConfidenceThreshold?: number;
   recentMessages?: readonly ChatMessage[];
 }): HandoffDecision {
@@ -21,6 +22,13 @@ export function evaluateHandoffNeed(params: {
     return {
       shouldHandoff: true,
       reason: "user_requested",
+    };
+  }
+
+  if (params.predictedCategory === "complaint" && params.topScore < 0.6) {
+    return {
+      shouldHandoff: true,
+      reason: "policy_blocked",
     };
   }
 

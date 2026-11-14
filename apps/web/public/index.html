@@ -302,6 +302,7 @@
               <th>样本数</th>
               <th>Accuracy</th>
               <th>Macro-F1</th>
+              <th>RAG Hit@3</th>
             </tr>
           </thead>
           <tbody id="jobsBody"></tbody>
@@ -383,7 +384,24 @@
         let meta = "";
         if (m.confidence !== undefined) meta += `置信度: ${m.confidence}`;
         if (m.citations && m.citations.length > 0) meta += ` | 引用命中 ${m.citations.length} 条`;
-        div.innerHTML = `<div>${escapeHtml(m.content)}</div>` + (meta ? `<div class="meta">${meta}</div>` : "");
+
+        let extraHtml = "";
+        if (m.role === "assistant") {
+          const upStyle = m.feedback === "helpful" ? "background:#ecfdf5;border-color:#059669;" : "";
+          const downStyle = m.feedback === "unhelpful" ? "background:#fef2f2;border-color:#dc2626;" : "";
+          extraHtml += `<div class="row" style="margin-top:6px;">
+            <button class="ghost" style="padding:2px 8px;font-size:12px;${upStyle}" onclick="submitFeedback('${m.id}', 'helpful')">👍 有帮助</button>
+            <button class="ghost" style="padding:2px 8px;font-size:12px;${downStyle}" onclick="submitFeedback('${m.id}', 'unhelpful')">👎 没帮助</button>
+          </div>`;
+          if (m.citations && m.citations.length > 0) {
+            extraHtml += `<details style="margin-top:6px;font-size:12px;color:var(--muted);">
+              <summary style="cursor:pointer;">查看引用原文 (${m.citations.length})</summary>
+              ${m.citations.map((c, idx) => `<div style="margin-top:4px;padding:6px;background:#f9fafb;border-radius:4px;">[${idx + 1}] 相似度 ${c.score}：${escapeHtml(c.snippet)}</div>`).join("")}
+            </details>`;
+          }
+        }
+
+        div.innerHTML = `<div>${escapeHtml(m.content)}</div>` + (meta ? `<div class="meta">${meta}</div>` : "") + extraHtml;
         box.appendChild(div);
       }
       box.scrollTop = box.scrollHeight;
@@ -438,6 +456,26 @@
       await refreshOverview();
     }
 
+    async function submitFeedback(messageId, feedback) {
+      await fetch("/api/chat/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageId, feedback })
+      });
+      await loadMessages();
+    }
+
+    async function promoteQa(ticketId) {
+      const res = await fetch("/api/handoff/promote-qa", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ticketId })
+      });
+      const data = await res.json();
+      alert(data.ok ? `已收录为【${data.category}】标准 QA 样本！前往工作台重新运行训练即可生效。` : `收录失败: ${data.error}`);
+      await refreshOverview();
+    }
+
     async function replyTicket(ticketId) {
       const input = document.getElementById("reply-" + ticketId);
       const replyContent = input.value.trim();
@@ -479,6 +517,7 @@
         document.getElementById("evalKpis").innerHTML = `
           <div class="kpi-box"><div class="kpi-label">Accuracy</div><div class="kpi-val">${(m.accuracy * 100).toFixed(1)}%</div></div>
           <div class="kpi-box"><div class="kpi-label">Macro-F1</div><div class="kpi-val">${(m.macroF1 * 100).toFixed(1)}%</div></div>
+          <div class="kpi-box"><div class="kpi-label">RAG Hit@3</div><div class="kpi-val">${m.ragHitAt3 !== undefined ? (m.ragHitAt3 * 100).toFixed(1) + "%" : "-"}</div></div>
           <div class="kpi-box"><div class="kpi-label">评测样本数</div><div class="kpi-val">${m.evaluatedCount}</div></div>
         `;
         document.getElementById("recallBars").innerHTML = Object.entries(m.perClassRecall || {}).map(([k, v]) => `
@@ -521,6 +560,7 @@
             <td>${j.sampleCount}</td>
             <td>${j.metrics ? (j.metrics.accuracy * 100).toFixed(1) + "%" : "-"}</td>
             <td><strong>${j.metrics ? (j.metrics.macroF1 * 100).toFixed(1) + "%" : "-"}</strong></td>
+            <td>${j.metrics && j.metrics.ragHitAt3 !== undefined ? (j.metrics.ragHitAt3 * 100).toFixed(1) + "%" : "-"}</td>
           </tr>
         `;
       }).join("");
@@ -534,8 +574,9 @@
           <td>${t.status}</td>
           <td>
             <div class="row">
-              <input type="text" id="reply-${t.id}" placeholder="输入人工回复..." style="min-width:160px;" />
+              <input type="text" id="reply-${t.id}" placeholder="输入人工回复..." style="min-width:140px;" />
               <button class="primary" onclick="replyTicket('${t.id}')">认领并回复</button>
+              ${t.status === "claimed" ? `<button class="ghost" onclick="promoteQa('${t.id}')">收录为 QA 样本</button>` : ""}
             </div>
           </td>
         </tr>
