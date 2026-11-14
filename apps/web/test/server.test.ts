@@ -36,7 +36,7 @@ test("Web HTTP 服务端到端测试：初始化基线、问答、实验复现�
     assert.equal(overview1.datasetVersions[0].version, "v1.0.0");
     assert.equal(overview1.trainingJobs.length, 2);
 
-    // 3. 触发新实验（oversample + seed=7）
+    // 3. 触发新实验（oversample + seed=7 + naive_bayes + ngramMax=2 + alpha=0.5）
     const expRes = (await (
       await fetch(`${baseUrl}/api/pipeline/run`, {
         method: "POST",
@@ -45,11 +45,21 @@ test("Web HTTP 服务端到端测试：初始化基线、问答、实验复现�
           version: "v1.1.0",
           seed: 7,
           balanceStrategy: "oversample",
+          splitRatio: { train: 0.7, val: 0.15, test: 0.15 },
+          classifierType: "naive_bayes",
+          ngramMax: 2,
+          alpha: 0.5,
+          evalSplit: "test",
         }),
       })
-    ).json()) as { datasetVersion: { version: string; totalCount: number } };
+    ).json()) as {
+      datasetVersion: { version: string; totalCount: number };
+      evalJob: { metrics?: { accuracy: number; macroF1: number; confusionMatrix?: unknown } };
+    };
     assert.equal(expRes.datasetVersion.version, "v1.1.0");
-    assert.equal(expRes.datasetVersion.totalCount, 28);
+    assert.equal(expRes.datasetVersion.totalCount, 320);
+    assert.ok(expRes.evalJob.metrics?.confusionMatrix);
+    assert.ok((expRes.evalJob.metrics?.macroF1 ?? 0) > 0.8);
 
     // 4. 客户问答与投诉转人工
     const chatRes = (await (

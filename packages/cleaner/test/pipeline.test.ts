@@ -12,10 +12,10 @@ test("数据收集、脱敏、去重、样本均衡与可复现切分闭环测�
   const store = new SqliteStore(":memory:");
 
   try {
-    // 1. 首次导入公开格式语料
+    // 1. 首次导入公开格式语料（240 条）
     const firstImport = importCorpusFile(fixturePath, store);
     assert.equal(firstImport.deduplicated, false);
-    assert.equal(firstImport.records.length, 21);
+    assert.equal(firstImport.records.length, 240);
 
     // 2. 再次导入同一文件应触发校验和幂等去重
     const secondImport = importCorpusFile(fixturePath, store);
@@ -33,22 +33,22 @@ test("数据收集、脱敏、去重、样本均衡与可复现切分闭环测�
       }
     );
 
-    // 验证清洗前分布（其中一条重复咨询已被去重，所以 consultation 为 7）
+    // 验证清洗前分布（80/60/55/45）
     assert.deepEqual(run1.rawDistribution, {
-      consultation: 7,
-      logistics: 5,
-      refund: 4,
-      complaint: 4,
+      consultation: 80,
+      logistics: 60,
+      refund: 55,
+      complaint: 45,
     });
 
-    // 验证均衡后分布（以最小类 4 条为基准，4 类严格 1:1:1:1 共 16 条）
+    // 验证均衡后分布（以最小类 45 条为基准，4 类严格 1:1:1:1 共 180 条）
     assert.deepEqual(run1.datasetVersion.classDistribution, {
-      consultation: 4,
-      logistics: 4,
-      refund: 4,
-      complaint: 4,
+      consultation: 45,
+      logistics: 45,
+      refund: 45,
+      complaint: 45,
     });
-    assert.equal(run1.samples.length, 16);
+    assert.equal(run1.samples.length, 180);
 
     // 验证脱敏规则（手机号与邮箱均应被替换）
     const sanitizedChunks = run1.chunks.filter((c) => c.sanitized);
@@ -59,7 +59,7 @@ test("数据收集、脱敏、去重、样本均衡与可复现切分闭环测�
 
     // 验证数据库落库与读回一致
     const savedSamples = store.listQaSamples(run1.datasetVersion.id);
-    assert.equal(savedSamples.length, 16);
+    assert.equal(savedSamples.length, 180);
 
     // 4. 验证可复现性：使用相同 seed 再跑一次，抽取结果顺序与切分归属完全一致
     const store2 = new SqliteStore(":memory:");

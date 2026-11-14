@@ -13,6 +13,7 @@ import type { LocalVectorStore } from "./vector-store.ts";
 export * from "./embedder.ts";
 export * from "./vector-store.ts";
 export * from "./evaluator.ts";
+export * from "./naive-bayes-classifier.ts";
 
 /**
  * 轨道 A：执行 RAG 知识块向量化入库，并保存 TrainingJob 记录
@@ -70,12 +71,14 @@ export async function runIntentEvalJob(
     datasetVersionId?: string;
     seed?: number;
     targetModel: string;
+    evalSplit?: "val" | "test";
     hyperparams?: Record<string, string | number | boolean>;
   }
 ): Promise<TrainingJob> {
   const startedAt = new Date().toISOString();
-  const testSet = samples.filter((s) => s.split === "test");
-  const evalTarget = testSet.length > 0 ? testSet : samples;
+  const targetSplit = options.evalSplit ?? "test";
+  const splitSamples = samples.filter((s) => s.split === targetSplit);
+  const evalTarget = splitSamples.length > 0 ? splitSamples : samples;
 
   const metrics = await evaluateIntentClassifier(evalTarget, predictCategory);
 

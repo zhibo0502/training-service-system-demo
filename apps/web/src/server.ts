@@ -1,6 +1,6 @@
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { BalanceStrategy, ChatMessage } from "@ts-qa/shared";
 import {
@@ -14,9 +14,11 @@ import {
 } from "../../../packages/cleaner/src/index.ts";
 import {
   importCorpusFile,
+  type RawCorpusRecord,
   SqliteStore,
 } from "../../../packages/collector/src/index.ts";
 import {
+  CharNgramNaiveBayesClassifier,
   LocalNgramEmbedder,
   LocalVectorStore,
   OllamaEmbedder,
@@ -42,6 +44,7 @@ export async function createAppServer(options?: AppServerOptions) {
   const dataDir = options?.dataDir ?? resolve(repoRoot, "data");
   const useOllama = options?.useOllama ?? process.env.USE_OLLAMA === "1";
   const corpusPath = options?.corpusPath ?? defaultCorpusPath;
+  const importedFiles = new Set<string>([corpusPath]);
 
   const store = new SqliteStore(join(dataDir, "demo.sqlite"));
   const vectorStore = new LocalVectorStore(join(dataDir, "vectors.json"));
@@ -60,37 +63,102 @@ export async function createAppServer(options?: AppServerOptions) {
     minConfidenceThreshold: 0.25,
   });
 
-  // 首次启动时自动导入内置示例语料并生成 v1.0.0 均衡基线
-  if (store.listDatasetVersions().length === 0) {
-    const imported = importCorpusFile(corpusPath, store, {
-      title: "内置中文客服与投诉示例语料",
+  async function executePipelineRun(params: {
+    version: string;
+    seed: number;
+    balanceStrategy: BalanceStrategy;
+    splitRatio: { train: number; val: number; test: number };
+    classifierType: "naive_bayes" | "keyword_baseline";
+    ngramMax: number;
+    alpha: number;
+    evalSplit: "val" | "test";
+  }) {
+    const allRecords: RawCorpusRecord[] = [];
+    let lastDocId = "merged-corpus";
+
+    for (const filePath of importedFiles) {
+      const imported = importCorpusFile(filePath, store);
+      allRecords.push(...imported.records);
+      lastDocId = imported.document.id;
+    }
+
+    const cleaned = runCleaningPipeline(allRecords, lastDocId, store, {
+      version: params.version,
+      description: `${params.balanceStrategy}, split=${params.splitRatio.train}/${params.splitRatio.val}/${params.splitRatio.test}`,
+      seed: params.seed,
+      balanceStrategy: params.balanceStrategy,
+      splitRatio: params.splitRatio,
     });
-    const cleaned = runCleaningPipeline(
-      imported.records,
-      imported.document.id,
+
+    const ragJob = await runRagIndexJob(
+      cleaned.chunks,
+      embedder,
+      vectorStore,
       store,
-      {
-        version: "v1.0.0",
-        description: "初始基线：undersample 1:1:1:1 均衡采样",
-        seed: 42,
-        balanceStrategy: "undersample",
-      }
+      { datasetVersionId: cleaned.datasetVersion.id, seed: params.seed }
     );
-    await runRagIndexJob(cleaned.chunks, embedder, vectorStore, store, {
+
+    let predictFn: (q: string) => ReturnType<typeof mapToStandardCategory>;
+    let targetModel = "keyword-baseline-v1";
+
+    if (params.classifierType === "naive_bayes") {
+      const nb = new CharNgramNaiveBayesClassifier({
+        ngramMin: 1,
+        ngramMax: params.ngramMax,
+        alpha: params.alpha,
+      });
+      const trainSamples = cleaned.samples.filter((s) => s.split === "train");
+      nb.fit(trainSamples.length > 0 ? trainSamples : cleaned.samples);
+      predictFn = (q) => nb.predict(q);
+      targetModel = `char-ngram-nb(n=1..${params.ngramMax},a=${params.alpha})`;
+    } else {
+      predictFn = (q) => mapToStandardCategory(undefined, q);
+    }
+
+    const evalJob = await runIntentEvalJob(cleaned.samples, predictFn, store, {
       datasetVersionId: cleaned.datasetVersion.id,
-      seed: 42,
+      seed: params.seed,
+      targetModel,
+      evalSplit: params.evalSplit,
+      hyperparams: {
+        balanceStrategy: params.balanceStrategy,
+        evalSplit: params.evalSplit,
+        trainRatio: params.splitRatio.train,
+        valRatio: params.splitRatio.val,
+        testRatio: params.splitRatio.test,
+        classifierType: params.classifierType,
+        ngramMax: params.ngramMax,
+        alpha: params.alpha,
+      },
     });
-    await runIntentEvalJob(
-      cleaned.samples,
-      (q) => mapToStandardCategory(undefined, q),
-      store,
-      {
-        datasetVersionId: cleaned.datasetVersion.id,
-        seed: 42,
-        targetModel: "keyword-baseline-v1",
-        hyperparams: { balanceStrategy: "undersample" },
-      }
-    );
+
+    return {
+      rawDistribution: cleaned.rawDistribution,
+      datasetVersion: cleaned.datasetVersion,
+      ragJob,
+      evalJob,
+    };
+  }
+
+  // 首次启动时自动导入 240 条基准语料并跑通 v1.0.0 可训练基线
+  if (store.listDatasetVersions().length === 0) {
+    importCorpusFile(corpusPath, store, {
+      title: "内置中文客服与投诉基准语料(240条)",
+    });
+    await executePipelineRun({
+      version: "v1.0.0",
+      seed: 42,
+      balanceStrategy: "undersample",
+      splitRatio: { train: 0.8, val: 0.1, test: 0.1 },
+      classifierType: "naive_bayes",
+      ngramMax: 2,
+      alpha: 1.0,
+      evalSplit: "test",
+    });
+  } else {
+    for (const doc of store.listRawDocuments()) {
+      importedFiles.add(doc.filePath);
+    }
   }
 
   const server = createServer(async (req, res) => {
@@ -116,56 +184,69 @@ export async function createAppServer(options?: AppServerOptions) {
         });
       }
 
+      if (req.method === "POST" && pathname === "/api/corpus/import") {
+        const body = (await readJsonBody(req)) as {
+          filename?: string;
+          content?: string;
+        };
+        if (!body.filename || !body.content?.trim()) {
+          return sendJson(res, 400, { error: "请提供文件名和语料内容" });
+        }
+        const uploadDir = join(dataDir, "uploads");
+        mkdirSync(uploadDir, { recursive: true });
+        const safeName = basename(body.filename).replace(/[^a-zA-Z0-9._-]/g, "_");
+        const targetPath = join(uploadDir, `${Date.now()}-${safeName}`);
+        writeFileSync(targetPath, body.content, "utf-8");
+        importedFiles.add(targetPath);
+
+        const imported = importCorpusFile(targetPath, store, {
+          title: body.filename,
+        });
+        return sendJson(res, 200, {
+          document: imported.document,
+          recordCount: imported.records.length,
+          deduplicated: imported.deduplicated,
+        });
+      }
+
       if (req.method === "POST" && pathname === "/api/pipeline/run") {
         const body = (await readJsonBody(req)) as {
           version?: string;
           seed?: number;
           balanceStrategy?: BalanceStrategy;
+          splitRatio?: { train: number; val: number; test: number };
+          classifierType?: "naive_bayes" | "keyword_baseline";
+          ngramMax?: number;
+          alpha?: number;
+          evalSplit?: "val" | "test";
         };
-        const imported = importCorpusFile(corpusPath, store);
-        const seed = Number(body.seed ?? 42);
-        const strategy: BalanceStrategy = body.balanceStrategy ?? "undersample";
-        const version =
-          body.version?.trim() ||
-          `v1.${store.listDatasetVersions().length}.0`;
 
-        const cleaned = runCleaningPipeline(
-          imported.records,
-          imported.document.id,
-          store,
-          {
-            version,
-            seed,
-            balanceStrategy: strategy,
-          }
-        );
+        const trainR = Number(body.splitRatio?.train ?? 0.8);
+        const valR = Number(body.splitRatio?.val ?? 0.1);
+        const testR = Number(body.splitRatio?.test ?? 0.1);
+        const sum = trainR + valR + testR;
 
-        const ragJob = await runRagIndexJob(
-          cleaned.chunks,
-          embedder,
-          vectorStore,
-          store,
-          { datasetVersionId: cleaned.datasetVersion.id, seed }
-        );
-
-        const evalJob = await runIntentEvalJob(
-          cleaned.samples,
-          (q) => mapToStandardCategory(undefined, q),
-          store,
-          {
-            datasetVersionId: cleaned.datasetVersion.id,
-            seed,
-            targetModel: "keyword-baseline-v1",
-            hyperparams: { balanceStrategy: strategy },
-          }
-        );
-
-        return sendJson(res, 200, {
-          rawDistribution: cleaned.rawDistribution,
-          datasetVersion: cleaned.datasetVersion,
-          ragJob,
-          evalJob,
+        const result = await executePipelineRun({
+          version:
+            body.version?.trim() ||
+            `v1.${store.listDatasetVersions().length}.0`,
+          seed: Number(body.seed ?? 42),
+          balanceStrategy: body.balanceStrategy ?? "undersample",
+          splitRatio:
+            sum > 0
+              ? {
+                  train: Number((trainR / sum).toFixed(2)),
+                  val: Number((valR / sum).toFixed(2)),
+                  test: Number((testR / sum).toFixed(2)),
+                }
+              : { train: 0.8, val: 0.1, test: 0.1 },
+          classifierType: body.classifierType ?? "naive_bayes",
+          ngramMax: Math.min(3, Math.max(1, Number(body.ngramMax ?? 2))),
+          alpha: Math.max(0.05, Number(body.alpha ?? 1.0)),
+          evalSplit: body.evalSplit ?? "test",
         });
+
+        return sendJson(res, 200, result);
       }
 
       if (req.method === "GET" && pathname === "/api/chat/messages") {
@@ -250,7 +331,6 @@ async function readJsonBody(req: IncomingMessage): Promise<unknown> {
   return raw ? JSON.parse(raw) : {};
 }
 
-// 仅当直接运行 server.ts 时监听端口
 const isMain =
   process.argv[1] &&
   resolve(process.argv[1]) === fileURLToPath(import.meta.url);

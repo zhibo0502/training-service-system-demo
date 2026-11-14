@@ -1,21 +1,240 @@
-{"question":"请问会员积分怎么兑换优惠券？","answer":"进入个人中心积分商城即可选择对应面额优惠券兑换。","category":"consultation"}
-{"question":"你们客服工作时间是几点到几点？","answer":"人工客服每日 9:00 至 22:00 在线为您服务。","category":"咨询"}
-{"question":"如何修改账户绑定的手机号13812345678？","answer":"请点击账户安全页面验证原手机号或联系邮箱 help@example.com 协助处理。","category":"consultation"}
-{"question":"下单后可以开发票吗？","answer":"订单完成后可在订单详情页申请电子普通发票或增值税专用发票。","category":"consultation"}
-{"question":"新用户首单有什么优惠活动？","answer":"新用户注册即可领取满 100 减 20 元新人专享券。","category":"consultation"}
-{"question":"请问支持货到付款吗？","answer":"目前仅支持在线支付，暂不支持货到付款。","category":"consultation"}
-{"question":"优惠券过期了还能补发吗？","answer":"系统自动发放的过期优惠券不支持补发，请留意有效期。","category":"consultation"}
-{"question":"请问会员积分怎么兑换优惠券？","answer":"重复问题用于验证去重。","category":"consultation"}
-{"question":"我的快递三天没更新物流信息了怎么办？","answer":"已为您提交快递催件单，通常 24 小时内会更新最新中转状态。","category":"logistics"}
-{"question":"顺丰单号什么时候能发出？","answer":"现货商品每日 16:00 前付款当日发出，之后次日发出。","category":"物流"}
-{"question":"包裹显示已签收但我本人没收到怎么处理？","answer":"请先核实代收点或门卫，如仍未找到请联系我们核实派送底单。","category":"logistics"}
-{"question":"可以指定发京东快递吗？","answer":"下单备注优先匹配，偏远地区将根据实际网点调整承运商。","category":"logistics"}
-{"question":"发货后还能修改收货地址吗？","answer":"包裹发出后需由客服协助联系快递拦截改址，可能产生转寄费用。","category":"logistics"}
-{"question":"我想申请七天无理由退货怎么操作？","answer":"保持商品完好并在订单页点击申请售后，填写退回快递单号即可。","category":"refund"}
-{"question":"退款申请通过后几天到账？","answer":"审核通过后原路退回，微信/支付宝通常 1-3 个工作日到账。","category":"退款"}
-{"question":"收到的衣服尺码不合适可以换货吗？","answer":"支持签收 7 日内免费换货一次，请在售后页面选择换货原因。","category":"refund"}
-{"question":"只退部分商品优惠券怎么算？","answer":"部分退款将按商品实付金额比例退还，满减券不退回。","category":"refund"}
-{"question":"你们客服态度太差了我要投诉！","answer":"非常抱歉给您带来不佳体验，已升级至投诉专员并在 2 小时内回电处理。","category":"complaint"}
-{"question":"商品收到就是破损的而且一直不处理，我要维权投诉！","answer":"十分抱歉，请上传破损照片，我们将优先为您安排补发或全额赔付。","category":"投诉"}
-{"question":"虚假宣传发货时间，拖延一周不发货我要举报！","answer":"已记录您的延迟发货投诉，系统将按平台规则为您发放延迟赔付红包。","category":"complaint"}
-{"question":"多次反馈质量问题无人跟进，要求主管回电！","answer":"已为您标记加急客诉工单，客服主管将在 1 小时内致电跟进。","category":"complaint"}
+{"question":"请问一下，会员积分怎么兑换优惠券？","answer":"进入个人中心积分商城即可选择对应面额优惠券兑换。","category":"consultation"}
+{"question":"请问一下，会员积分怎么兑换优惠券？谢谢","answer":"进入个人中心积分商城即可选择对应面额优惠券兑换。","category":"consultation"}
+{"question":"请问一下，会员积分怎么兑换优惠券？请尽快回复","answer":"进入个人中心积分商城即可选择对应面额优惠券兑换。","category":"consultation"}
+{"question":"请问一下，会员积分怎么兑换优惠券？在线等","answer":"进入个人中心积分商城即可选择对应面额优惠券兑换。","category":"consultation"}
+{"question":"请问一下，会员积分怎么兑换优惠券？麻烦处理下","answer":"进入个人中心积分商城即可选择对应面额优惠券兑换。","category":"consultation"}
+{"question":"请问一下，会员积分怎么兑换优惠券？怎么解决？","answer":"进入个人中心积分商城即可选择对应面额优惠券兑换。","category":"consultation"}
+{"question":"请问一下，会员积分怎么兑换优惠券？能帮忙看下吗？","answer":"进入个人中心积分商城即可选择对应面额优惠券兑换。","category":"consultation"}
+{"question":"请问一下，会员积分怎么兑换优惠券？谢谢了","answer":"进入个人中心积分商城即可选择对应面额优惠券兑换。","category":"consultation"}
+{"question":"请问一下，客服人工服务时间是几点到几点？","answer":"人工客服每日 9:00 至 22:00 在线为您服务。","category":"consultation"}
+{"question":"请问一下，客服人工服务时间是几点到几点？谢谢","answer":"人工客服每日 9:00 至 22:00 在线为您服务。","category":"consultation"}
+{"question":"请问一下，客服人工服务时间是几点到几点？请尽快回复","answer":"人工客服每日 9:00 至 22:00 在线为您服务。","category":"consultation"}
+{"question":"请问一下，客服人工服务时间是几点到几点？在线等","answer":"人工客服每日 9:00 至 22:00 在线为您服务。","category":"consultation"}
+{"question":"请问一下，客服人工服务时间是几点到几点？麻烦处理下","answer":"人工客服每日 9:00 至 22:00 在线为您服务。","category":"consultation"}
+{"question":"请问一下，客服人工服务时间是几点到几点？怎么解决？","answer":"人工客服每日 9:00 至 22:00 在线为您服务。","category":"consultation"}
+{"question":"请问一下，客服人工服务时间是几点到几点？能帮忙看下吗？","answer":"人工客服每日 9:00 至 22:00 在线为您服务。","category":"consultation"}
+{"question":"请问一下，客服人工服务时间是几点到几点？谢谢了","answer":"人工客服每日 9:00 至 22:00 在线为您服务。","category":"consultation"}
+{"question":"请问一下，下单后如何申请开具电子发票？","answer":"订单完成后可在订单详情页申请电子普通发票或增值税专用发票。","category":"consultation"}
+{"question":"请问一下，下单后如何申请开具电子发票？谢谢","answer":"订单完成后可在订单详情页申请电子普通发票或增值税专用发票。","category":"consultation"}
+{"question":"请问一下，下单后如何申请开具电子发票？请尽快回复","answer":"订单完成后可在订单详情页申请电子普通发票或增值税专用发票。","category":"consultation"}
+{"question":"请问一下，下单后如何申请开具电子发票？在线等","answer":"订单完成后可在订单详情页申请电子普通发票或增值税专用发票。","category":"consultation"}
+{"question":"请问一下，下单后如何申请开具电子发票？麻烦处理下","answer":"订单完成后可在订单详情页申请电子普通发票或增值税专用发票。","category":"consultation"}
+{"question":"请问一下，下单后如何申请开具电子发票？怎么解决？","answer":"订单完成后可在订单详情页申请电子普通发票或增值税专用发票。","category":"consultation"}
+{"question":"请问一下，下单后如何申请开具电子发票？能帮忙看下吗？","answer":"订单完成后可在订单详情页申请电子普通发票或增值税专用发票。","category":"consultation"}
+{"question":"请问一下，下单后如何申请开具电子发票？谢谢了","answer":"订单完成后可在订单详情页申请电子普通发票或增值税专用发票。","category":"consultation"}
+{"question":"请问一下，新用户注册有什么首单优惠？","answer":"新用户注册即可领取满 100 减 20 元新人专享券。","category":"consultation"}
+{"question":"请问一下，新用户注册有什么首单优惠？谢谢","answer":"新用户注册即可领取满 100 减 20 元新人专享券。","category":"consultation"}
+{"question":"请问一下，新用户注册有什么首单优惠？请尽快回复","answer":"新用户注册即可领取满 100 减 20 元新人专享券。","category":"consultation"}
+{"question":"请问一下，新用户注册有什么首单优惠？在线等","answer":"新用户注册即可领取满 100 减 20 元新人专享券。","category":"consultation"}
+{"question":"请问一下，新用户注册有什么首单优惠？麻烦处理下","answer":"新用户注册即可领取满 100 减 20 元新人专享券。","category":"consultation"}
+{"question":"请问一下，新用户注册有什么首单优惠？怎么解决？","answer":"新用户注册即可领取满 100 减 20 元新人专享券。","category":"consultation"}
+{"question":"请问一下，新用户注册有什么首单优惠？能帮忙看下吗？","answer":"新用户注册即可领取满 100 减 20 元新人专享券。","category":"consultation"}
+{"question":"请问一下，新用户注册有什么首单优惠？谢谢了","answer":"新用户注册即可领取满 100 减 20 元新人专享券。","category":"consultation"}
+{"question":"请问一下，请问支持货到付款或者分期免息吗？","answer":"目前仅支持在线支付，部分商品支持信用卡及花呗分期免息。","category":"consultation"}
+{"question":"请问一下，请问支持货到付款或者分期免息吗？谢谢","answer":"目前仅支持在线支付，部分商品支持信用卡及花呗分期免息。","category":"consultation"}
+{"question":"请问一下，请问支持货到付款或者分期免息吗？请尽快回复","answer":"目前仅支持在线支付，部分商品支持信用卡及花呗分期免息。","category":"consultation"}
+{"question":"请问一下，请问支持货到付款或者分期免息吗？在线等","answer":"目前仅支持在线支付，部分商品支持信用卡及花呗分期免息。","category":"consultation"}
+{"question":"请问一下，请问支持货到付款或者分期免息吗？麻烦处理下","answer":"目前仅支持在线支付，部分商品支持信用卡及花呗分期免息。","category":"consultation"}
+{"question":"请问一下，请问支持货到付款或者分期免息吗？怎么解决？","answer":"目前仅支持在线支付，部分商品支持信用卡及花呗分期免息。","category":"consultation"}
+{"question":"请问一下，请问支持货到付款或者分期免息吗？能帮忙看下吗？","answer":"目前仅支持在线支付，部分商品支持信用卡及花呗分期免息。","category":"consultation"}
+{"question":"请问一下，请问支持货到付款或者分期免息吗？谢谢了","answer":"目前仅支持在线支付，部分商品支持信用卡及花呗分期免息。","category":"consultation"}
+{"question":"请问一下，优惠券过期了还能不能补发？","answer":"系统自动发放的过期优惠券不支持补发，请留意使用期限。","category":"consultation"}
+{"question":"请问一下，优惠券过期了还能不能补发？谢谢","answer":"系统自动发放的过期优惠券不支持补发，请留意使用期限。","category":"consultation"}
+{"question":"请问一下，优惠券过期了还能不能补发？请尽快回复","answer":"系统自动发放的过期优惠券不支持补发，请留意使用期限。","category":"consultation"}
+{"question":"请问一下，优惠券过期了还能不能补发？在线等","answer":"系统自动发放的过期优惠券不支持补发，请留意使用期限。","category":"consultation"}
+{"question":"请问一下，优惠券过期了还能不能补发？麻烦处理下","answer":"系统自动发放的过期优惠券不支持补发，请留意使用期限。","category":"consultation"}
+{"question":"请问一下，优惠券过期了还能不能补发？怎么解决？","answer":"系统自动发放的过期优惠券不支持补发，请留意使用期限。","category":"consultation"}
+{"question":"请问一下，优惠券过期了还能不能补发？能帮忙看下吗？","answer":"系统自动发放的过期优惠券不支持补发，请留意使用期限。","category":"consultation"}
+{"question":"请问一下，优惠券过期了还能不能补发？谢谢了","answer":"系统自动发放的过期优惠券不支持补发，请留意使用期限。","category":"consultation"}
+{"question":"请问一下，如何修改账户绑定的手机号13812345678？","answer":"请点击账户安全页面验证原手机号或联系邮箱 help@example.com 协助处理。","category":"consultation"}
+{"question":"请问一下，如何修改账户绑定的手机号13812345678？谢谢","answer":"请点击账户安全页面验证原手机号或联系邮箱 help@example.com 协助处理。","category":"consultation"}
+{"question":"请问一下，如何修改账户绑定的手机号13812345678？请尽快回复","answer":"请点击账户安全页面验证原手机号或联系邮箱 help@example.com 协助处理。","category":"consultation"}
+{"question":"请问一下，如何修改账户绑定的手机号13812345678？在线等","answer":"请点击账户安全页面验证原手机号或联系邮箱 help@example.com 协助处理。","category":"consultation"}
+{"question":"请问一下，如何修改账户绑定的手机号13812345678？麻烦处理下","answer":"请点击账户安全页面验证原手机号或联系邮箱 help@example.com 协助处理。","category":"consultation"}
+{"question":"请问一下，如何修改账户绑定的手机号13812345678？怎么解决？","answer":"请点击账户安全页面验证原手机号或联系邮箱 help@example.com 协助处理。","category":"consultation"}
+{"question":"请问一下，如何修改账户绑定的手机号13812345678？能帮忙看下吗？","answer":"请点击账户安全页面验证原手机号或联系邮箱 help@example.com 协助处理。","category":"consultation"}
+{"question":"请问一下，如何修改账户绑定的手机号13812345678？谢谢了","answer":"请点击账户安全页面验证原手机号或联系邮箱 help@example.com 协助处理。","category":"consultation"}
+{"question":"请问一下，企业批量采购有没有专属折扣？","answer":"单笔满 5000 元可联系大客户专员申请阶梯报价。","category":"consultation"}
+{"question":"请问一下，企业批量采购有没有专属折扣？谢谢","answer":"单笔满 5000 元可联系大客户专员申请阶梯报价。","category":"consultation"}
+{"question":"请问一下，企业批量采购有没有专属折扣？请尽快回复","answer":"单笔满 5000 元可联系大客户专员申请阶梯报价。","category":"consultation"}
+{"question":"请问一下，企业批量采购有没有专属折扣？在线等","answer":"单笔满 5000 元可联系大客户专员申请阶梯报价。","category":"consultation"}
+{"question":"请问一下，企业批量采购有没有专属折扣？麻烦处理下","answer":"单笔满 5000 元可联系大客户专员申请阶梯报价。","category":"consultation"}
+{"question":"请问一下，企业批量采购有没有专属折扣？怎么解决？","answer":"单笔满 5000 元可联系大客户专员申请阶梯报价。","category":"consultation"}
+{"question":"请问一下，企业批量采购有没有专属折扣？能帮忙看下吗？","answer":"单笔满 5000 元可联系大客户专员申请阶梯报价。","category":"consultation"}
+{"question":"请问一下，企业批量采购有没有专属折扣？谢谢了","answer":"单笔满 5000 元可联系大客户专员申请阶梯报价。","category":"consultation"}
+{"question":"请问一下，商品保修期是多久，包含哪些范围？","answer":"整机提供 1 年质保，非人为损坏均支持免费检修。","category":"consultation"}
+{"question":"请问一下，商品保修期是多久，包含哪些范围？谢谢","answer":"整机提供 1 年质保，非人为损坏均支持免费检修。","category":"consultation"}
+{"question":"请问一下，商品保修期是多久，包含哪些范围？请尽快回复","answer":"整机提供 1 年质保，非人为损坏均支持免费检修。","category":"consultation"}
+{"question":"请问一下，商品保修期是多久，包含哪些范围？在线等","answer":"整机提供 1 年质保，非人为损坏均支持免费检修。","category":"consultation"}
+{"question":"请问一下，商品保修期是多久，包含哪些范围？麻烦处理下","answer":"整机提供 1 年质保，非人为损坏均支持免费检修。","category":"consultation"}
+{"question":"请问一下，商品保修期是多久，包含哪些范围？怎么解决？","answer":"整机提供 1 年质保，非人为损坏均支持免费检修。","category":"consultation"}
+{"question":"请问一下，商品保修期是多久，包含哪些范围？能帮忙看下吗？","answer":"整机提供 1 年质保，非人为损坏均支持免费检修。","category":"consultation"}
+{"question":"请问一下，商品保修期是多久，包含哪些范围？谢谢了","answer":"整机提供 1 年质保，非人为损坏均支持免费检修。","category":"consultation"}
+{"question":"请问一下，怎么查询我账户里还剩多少余额？","answer":"在个人中心钱包页面可实时查看可用余额与明细。","category":"consultation"}
+{"question":"请问一下，怎么查询我账户里还剩多少余额？谢谢","answer":"在个人中心钱包页面可实时查看可用余额与明细。","category":"consultation"}
+{"question":"请问一下，怎么查询我账户里还剩多少余额？请尽快回复","answer":"在个人中心钱包页面可实时查看可用余额与明细。","category":"consultation"}
+{"question":"请问一下，怎么查询我账户里还剩多少余额？在线等","answer":"在个人中心钱包页面可实时查看可用余额与明细。","category":"consultation"}
+{"question":"请问一下，怎么查询我账户里还剩多少余额？麻烦处理下","answer":"在个人中心钱包页面可实时查看可用余额与明细。","category":"consultation"}
+{"question":"请问一下，怎么查询我账户里还剩多少余额？怎么解决？","answer":"在个人中心钱包页面可实时查看可用余额与明细。","category":"consultation"}
+{"question":"请问一下，怎么查询我账户里还剩多少余额？能帮忙看下吗？","answer":"在个人中心钱包页面可实时查看可用余额与明细。","category":"consultation"}
+{"question":"请问一下，怎么查询我账户里还剩多少余额？谢谢了","answer":"在个人中心钱包页面可实时查看可用余额与明细。","category":"consultation"}
+{"question":"请问一下，我的快递三天没更新物流信息了怎么办？","answer":"已为您提交快递催件单，通常 24 小时内会更新最新中转状态。","category":"logistics"}
+{"question":"请问一下，我的快递三天没更新物流信息了怎么办？谢谢","answer":"已为您提交快递催件单，通常 24 小时内会更新最新中转状态。","category":"logistics"}
+{"question":"请问一下，我的快递三天没更新物流信息了怎么办？请尽快回复","answer":"已为您提交快递催件单，通常 24 小时内会更新最新中转状态。","category":"logistics"}
+{"question":"请问一下，我的快递三天没更新物流信息了怎么办？在线等","answer":"已为您提交快递催件单，通常 24 小时内会更新最新中转状态。","category":"logistics"}
+{"question":"请问一下，我的快递三天没更新物流信息了怎么办？麻烦处理下","answer":"已为您提交快递催件单，通常 24 小时内会更新最新中转状态。","category":"logistics"}
+{"question":"请问一下，我的快递三天没更新物流信息了怎么办？怎么解决？","answer":"已为您提交快递催件单，通常 24 小时内会更新最新中转状态。","category":"logistics"}
+{"question":"请问一下，我的快递三天没更新物流信息了怎么办？能帮忙看下吗？","answer":"已为您提交快递催件单，通常 24 小时内会更新最新中转状态。","category":"logistics"}
+{"question":"请问一下，我的快递三天没更新物流信息了怎么办？谢谢了","answer":"已为您提交快递催件单，通常 24 小时内会更新最新中转状态。","category":"logistics"}
+{"question":"请问一下，下单后一般什么时候能安排发货？","answer":"现货商品每日 16:00 前付款当日发出，之后次日发出。","category":"logistics"}
+{"question":"请问一下，下单后一般什么时候能安排发货？谢谢","answer":"现货商品每日 16:00 前付款当日发出，之后次日发出。","category":"logistics"}
+{"question":"请问一下，下单后一般什么时候能安排发货？请尽快回复","answer":"现货商品每日 16:00 前付款当日发出，之后次日发出。","category":"logistics"}
+{"question":"请问一下，下单后一般什么时候能安排发货？在线等","answer":"现货商品每日 16:00 前付款当日发出，之后次日发出。","category":"logistics"}
+{"question":"请问一下，下单后一般什么时候能安排发货？麻烦处理下","answer":"现货商品每日 16:00 前付款当日发出，之后次日发出。","category":"logistics"}
+{"question":"请问一下，下单后一般什么时候能安排发货？怎么解决？","answer":"现货商品每日 16:00 前付款当日发出，之后次日发出。","category":"logistics"}
+{"question":"请问一下，下单后一般什么时候能安排发货？能帮忙看下吗？","answer":"现货商品每日 16:00 前付款当日发出，之后次日发出。","category":"logistics"}
+{"question":"请问一下，下单后一般什么时候能安排发货？谢谢了","answer":"现货商品每日 16:00 前付款当日发出，之后次日发出。","category":"logistics"}
+{"question":"请问一下，包裹显示已签收但我本人没收到怎么处理？","answer":"请先核实代收点或门卫，如仍未找到请联系我们核实派送底单。","category":"logistics"}
+{"question":"请问一下，包裹显示已签收但我本人没收到怎么处理？谢谢","answer":"请先核实代收点或门卫，如仍未找到请联系我们核实派送底单。","category":"logistics"}
+{"question":"请问一下，包裹显示已签收但我本人没收到怎么处理？请尽快回复","answer":"请先核实代收点或门卫，如仍未找到请联系我们核实派送底单。","category":"logistics"}
+{"question":"请问一下，包裹显示已签收但我本人没收到怎么处理？在线等","answer":"请先核实代收点或门卫，如仍未找到请联系我们核实派送底单。","category":"logistics"}
+{"question":"请问一下，包裹显示已签收但我本人没收到怎么处理？麻烦处理下","answer":"请先核实代收点或门卫，如仍未找到请联系我们核实派送底单。","category":"logistics"}
+{"question":"请问一下，包裹显示已签收但我本人没收到怎么处理？怎么解决？","answer":"请先核实代收点或门卫，如仍未找到请联系我们核实派送底单。","category":"logistics"}
+{"question":"请问一下，包裹显示已签收但我本人没收到怎么处理？能帮忙看下吗？","answer":"请先核实代收点或门卫，如仍未找到请联系我们核实派送底单。","category":"logistics"}
+{"question":"请问一下，包裹显示已签收但我本人没收到怎么处理？谢谢了","answer":"请先核实代收点或门卫，如仍未找到请联系我们核实派送底单。","category":"logistics"}
+{"question":"请问一下，下单时可以指定发顺丰或京东快递吗？","answer":"下单备注优先匹配，偏远地区将根据实际网点调整承运商。","category":"logistics"}
+{"question":"请问一下，下单时可以指定发顺丰或京东快递吗？谢谢","answer":"下单备注优先匹配，偏远地区将根据实际网点调整承运商。","category":"logistics"}
+{"question":"请问一下，下单时可以指定发顺丰或京东快递吗？请尽快回复","answer":"下单备注优先匹配，偏远地区将根据实际网点调整承运商。","category":"logistics"}
+{"question":"请问一下，下单时可以指定发顺丰或京东快递吗？在线等","answer":"下单备注优先匹配，偏远地区将根据实际网点调整承运商。","category":"logistics"}
+{"question":"请问一下，下单时可以指定发顺丰或京东快递吗？麻烦处理下","answer":"下单备注优先匹配，偏远地区将根据实际网点调整承运商。","category":"logistics"}
+{"question":"请问一下，下单时可以指定发顺丰或京东快递吗？怎么解决？","answer":"下单备注优先匹配，偏远地区将根据实际网点调整承运商。","category":"logistics"}
+{"question":"请问一下，下单时可以指定发顺丰或京东快递吗？能帮忙看下吗？","answer":"下单备注优先匹配，偏远地区将根据实际网点调整承运商。","category":"logistics"}
+{"question":"请问一下，下单时可以指定发顺丰或京东快递吗？谢谢了","answer":"下单备注优先匹配，偏远地区将根据实际网点调整承运商。","category":"logistics"}
+{"question":"请问一下，商品已经发货了还能修改收货地址吗？","answer":"包裹发出后需由客服协助联系快递拦截改址，可能产生转寄费用。","category":"logistics"}
+{"question":"请问一下，商品已经发货了还能修改收货地址吗？谢谢","answer":"包裹发出后需由客服协助联系快递拦截改址，可能产生转寄费用。","category":"logistics"}
+{"question":"请问一下，商品已经发货了还能修改收货地址吗？请尽快回复","answer":"包裹发出后需由客服协助联系快递拦截改址，可能产生转寄费用。","category":"logistics"}
+{"question":"请问一下，商品已经发货了还能修改收货地址吗？在线等","answer":"包裹发出后需由客服协助联系快递拦截改址，可能产生转寄费用。","category":"logistics"}
+{"question":"请问一下，商品已经发货了还能修改收货地址吗？麻烦处理下","answer":"包裹发出后需由客服协助联系快递拦截改址，可能产生转寄费用。","category":"logistics"}
+{"question":"请问一下，商品已经发货了还能修改收货地址吗？怎么解决？","answer":"包裹发出后需由客服协助联系快递拦截改址，可能产生转寄费用。","category":"logistics"}
+{"question":"请问一下，商品已经发货了还能修改收货地址吗？能帮忙看下吗？","answer":"包裹发出后需由客服协助联系快递拦截改址，可能产生转寄费用。","category":"logistics"}
+{"question":"请问一下，商品已经发货了还能修改收货地址吗？谢谢了","answer":"包裹发出后需由客服协助联系快递拦截改址，可能产生转寄费用。","category":"logistics"}
+{"question":"请问一下，同城配送大概要几天才能送到？","answer":"同城仓库发出通常次日达，大促期间顺延 1-2 天。","category":"logistics"}
+{"question":"请问一下，同城配送大概要几天才能送到？谢谢","answer":"同城仓库发出通常次日达，大促期间顺延 1-2 天。","category":"logistics"}
+{"question":"请问一下，同城配送大概要几天才能送到？请尽快回复","answer":"同城仓库发出通常次日达，大促期间顺延 1-2 天。","category":"logistics"}
+{"question":"请问一下，同城配送大概要几天才能送到？在线等","answer":"同城仓库发出通常次日达，大促期间顺延 1-2 天。","category":"logistics"}
+{"question":"请问一下，同城配送大概要几天才能送到？麻烦处理下","answer":"同城仓库发出通常次日达，大促期间顺延 1-2 天。","category":"logistics"}
+{"question":"请问一下，同城配送大概要几天才能送到？怎么解决？","answer":"同城仓库发出通常次日达，大促期间顺延 1-2 天。","category":"logistics"}
+{"question":"请问一下，同城配送大概要几天才能送到？能帮忙看下吗？","answer":"同城仓库发出通常次日达，大促期间顺延 1-2 天。","category":"logistics"}
+{"question":"请问一下，同城配送大概要几天才能送到？谢谢了","answer":"同城仓库发出通常次日达，大促期间顺延 1-2 天。","category":"logistics"}
+{"question":"请问一下，物流单号查不到任何揽收记录正常吗？","answer":"刚打单出库时承运商系统会有 4-6 小时延迟，请稍后刷新。","category":"logistics"}
+{"question":"请问一下，物流单号查不到任何揽收记录正常吗？谢谢","answer":"刚打单出库时承运商系统会有 4-6 小时延迟，请稍后刷新。","category":"logistics"}
+{"question":"请问一下，物流单号查不到任何揽收记录正常吗？请尽快回复","answer":"刚打单出库时承运商系统会有 4-6 小时延迟，请稍后刷新。","category":"logistics"}
+{"question":"请问一下，物流单号查不到任何揽收记录正常吗？在线等","answer":"刚打单出库时承运商系统会有 4-6 小时延迟，请稍后刷新。","category":"logistics"}
+{"question":"请问一下，物流单号查不到任何揽收记录正常吗？麻烦处理下","answer":"刚打单出库时承运商系统会有 4-6 小时延迟，请稍后刷新。","category":"logistics"}
+{"question":"请问一下，物流单号查不到任何揽收记录正常吗？怎么解决？","answer":"刚打单出库时承运商系统会有 4-6 小时延迟，请稍后刷新。","category":"logistics"}
+{"question":"请问一下，物流单号查不到任何揽收记录正常吗？能帮忙看下吗？","answer":"刚打单出库时承运商系统会有 4-6 小时延迟，请稍后刷新。","category":"logistics"}
+{"question":"请问一下，物流单号查不到任何揽收记录正常吗？谢谢了","answer":"刚打单出库时承运商系统会有 4-6 小时延迟，请稍后刷新。","category":"logistics"}
+{"question":"请问一下，为什么订单拆分成两个包裹发货了？","answer":"商品分属不同仓库存放，拆单发出是为了让您更快收到现货。","category":"logistics"}
+{"question":"请问一下，为什么订单拆分成两个包裹发货了？谢谢","answer":"商品分属不同仓库存放，拆单发出是为了让您更快收到现货。","category":"logistics"}
+{"question":"请问一下，为什么订单拆分成两个包裹发货了？请尽快回复","answer":"商品分属不同仓库存放，拆单发出是为了让您更快收到现货。","category":"logistics"}
+{"question":"请问一下，为什么订单拆分成两个包裹发货了？在线等","answer":"商品分属不同仓库存放，拆单发出是为了让您更快收到现货。","category":"logistics"}
+{"question":"请问一下，我想申请七天无理由退货怎么操作？","answer":"保持商品完好并在订单页点击申请售后，填写退回快递单号即可。","category":"refund"}
+{"question":"请问一下，我想申请七天无理由退货怎么操作？谢谢","answer":"保持商品完好并在订单页点击申请售后，填写退回快递单号即可。","category":"refund"}
+{"question":"请问一下，我想申请七天无理由退货怎么操作？请尽快回复","answer":"保持商品完好并在订单页点击申请售后，填写退回快递单号即可。","category":"refund"}
+{"question":"请问一下，我想申请七天无理由退货怎么操作？在线等","answer":"保持商品完好并在订单页点击申请售后，填写退回快递单号即可。","category":"refund"}
+{"question":"请问一下，我想申请七天无理由退货怎么操作？麻烦处理下","answer":"保持商品完好并在订单页点击申请售后，填写退回快递单号即可。","category":"refund"}
+{"question":"请问一下，我想申请七天无理由退货怎么操作？怎么解决？","answer":"保持商品完好并在订单页点击申请售后，填写退回快递单号即可。","category":"refund"}
+{"question":"请问一下，我想申请七天无理由退货怎么操作？能帮忙看下吗？","answer":"保持商品完好并在订单页点击申请售后，填写退回快递单号即可。","category":"refund"}
+{"question":"请问一下，我想申请七天无理由退货怎么操作？谢谢了","answer":"保持商品完好并在订单页点击申请售后，填写退回快递单号即可。","category":"refund"}
+{"question":"请问一下，退款申请审核通过后几天到账？","answer":"审核通过后原路退回，微信或支付宝通常 1-3 个工作日到账。","category":"refund"}
+{"question":"请问一下，退款申请审核通过后几天到账？谢谢","answer":"审核通过后原路退回，微信或支付宝通常 1-3 个工作日到账。","category":"refund"}
+{"question":"请问一下，退款申请审核通过后几天到账？请尽快回复","answer":"审核通过后原路退回，微信或支付宝通常 1-3 个工作日到账。","category":"refund"}
+{"question":"请问一下，退款申请审核通过后几天到账？在线等","answer":"审核通过后原路退回，微信或支付宝通常 1-3 个工作日到账。","category":"refund"}
+{"question":"请问一下，退款申请审核通过后几天到账？麻烦处理下","answer":"审核通过后原路退回，微信或支付宝通常 1-3 个工作日到账。","category":"refund"}
+{"question":"请问一下，退款申请审核通过后几天到账？怎么解决？","answer":"审核通过后原路退回，微信或支付宝通常 1-3 个工作日到账。","category":"refund"}
+{"question":"请问一下，退款申请审核通过后几天到账？能帮忙看下吗？","answer":"审核通过后原路退回，微信或支付宝通常 1-3 个工作日到账。","category":"refund"}
+{"question":"请问一下，退款申请审核通过后几天到账？谢谢了","answer":"审核通过后原路退回，微信或支付宝通常 1-3 个工作日到账。","category":"refund"}
+{"question":"请问一下，收到的衣服尺码不合适可以免费换货吗？","answer":"支持签收 7 日内免费换货一次，请在售后页面选择换货原因。","category":"refund"}
+{"question":"请问一下，收到的衣服尺码不合适可以免费换货吗？谢谢","answer":"支持签收 7 日内免费换货一次，请在售后页面选择换货原因。","category":"refund"}
+{"question":"请问一下，收到的衣服尺码不合适可以免费换货吗？请尽快回复","answer":"支持签收 7 日内免费换货一次，请在售后页面选择换货原因。","category":"refund"}
+{"question":"请问一下，收到的衣服尺码不合适可以免费换货吗？在线等","answer":"支持签收 7 日内免费换货一次，请在售后页面选择换货原因。","category":"refund"}
+{"question":"请问一下，收到的衣服尺码不合适可以免费换货吗？麻烦处理下","answer":"支持签收 7 日内免费换货一次，请在售后页面选择换货原因。","category":"refund"}
+{"question":"请问一下，收到的衣服尺码不合适可以免费换货吗？怎么解决？","answer":"支持签收 7 日内免费换货一次，请在售后页面选择换货原因。","category":"refund"}
+{"question":"请问一下，收到的衣服尺码不合适可以免费换货吗？能帮忙看下吗？","answer":"支持签收 7 日内免费换货一次，请在售后页面选择换货原因。","category":"refund"}
+{"question":"请问一下，收到的衣服尺码不合适可以免费换货吗？谢谢了","answer":"支持签收 7 日内免费换货一次，请在售后页面选择换货原因。","category":"refund"}
+{"question":"请问一下，订单只退部分商品，满减优惠券怎么算？","answer":"部分退款将按商品实付金额比例退还，满减券不退回。","category":"refund"}
+{"question":"请问一下，订单只退部分商品，满减优惠券怎么算？谢谢","answer":"部分退款将按商品实付金额比例退还，满减券不退回。","category":"refund"}
+{"question":"请问一下，订单只退部分商品，满减优惠券怎么算？请尽快回复","answer":"部分退款将按商品实付金额比例退还，满减券不退回。","category":"refund"}
+{"question":"请问一下，订单只退部分商品，满减优惠券怎么算？在线等","answer":"部分退款将按商品实付金额比例退还，满减券不退回。","category":"refund"}
+{"question":"请问一下，订单只退部分商品，满减优惠券怎么算？麻烦处理下","answer":"部分退款将按商品实付金额比例退还，满减券不退回。","category":"refund"}
+{"question":"请问一下，订单只退部分商品，满减优惠券怎么算？怎么解决？","answer":"部分退款将按商品实付金额比例退还，满减券不退回。","category":"refund"}
+{"question":"请问一下，订单只退部分商品，满减优惠券怎么算？能帮忙看下吗？","answer":"部分退款将按商品实付金额比例退还，满减券不退回。","category":"refund"}
+{"question":"请问一下，订单只退部分商品，满减优惠券怎么算？谢谢了","answer":"部分退款将按商品实付金额比例退还，满减券不退回。","category":"refund"}
+{"question":"请问一下，商品还没发货能直接取消订单退款吗？","answer":"未发货订单在详情页点击取消订单即可秒退原支付账户。","category":"refund"}
+{"question":"请问一下，商品还没发货能直接取消订单退款吗？谢谢","answer":"未发货订单在详情页点击取消订单即可秒退原支付账户。","category":"refund"}
+{"question":"请问一下，商品还没发货能直接取消订单退款吗？请尽快回复","answer":"未发货订单在详情页点击取消订单即可秒退原支付账户。","category":"refund"}
+{"question":"请问一下，商品还没发货能直接取消订单退款吗？在线等","answer":"未发货订单在详情页点击取消订单即可秒退原支付账户。","category":"refund"}
+{"question":"请问一下，商品还没发货能直接取消订单退款吗？麻烦处理下","answer":"未发货订单在详情页点击取消订单即可秒退原支付账户。","category":"refund"}
+{"question":"请问一下，商品还没发货能直接取消订单退款吗？怎么解决？","answer":"未发货订单在详情页点击取消订单即可秒退原支付账户。","category":"refund"}
+{"question":"请问一下，商品还没发货能直接取消订单退款吗？能帮忙看下吗？","answer":"未发货订单在详情页点击取消订单即可秒退原支付账户。","category":"refund"}
+{"question":"请问一下，商品还没发货能直接取消订单退款吗？谢谢了","answer":"未发货订单在详情页点击取消订单即可秒退原支付账户。","category":"refund"}
+{"question":"请问一下，退货寄回的运费是由谁承担的？","answer":"质量问题由商家承担运费，无理由退货可使用运费险或自行承担。","category":"refund"}
+{"question":"请问一下，退货寄回的运费是由谁承担的？谢谢","answer":"质量问题由商家承担运费，无理由退货可使用运费险或自行承担。","category":"refund"}
+{"question":"请问一下，退货寄回的运费是由谁承担的？请尽快回复","answer":"质量问题由商家承担运费，无理由退货可使用运费险或自行承担。","category":"refund"}
+{"question":"请问一下，退货寄回的运费是由谁承担的？在线等","answer":"质量问题由商家承担运费，无理由退货可使用运费险或自行承担。","category":"refund"}
+{"question":"请问一下，退货寄回的运费是由谁承担的？麻烦处理下","answer":"质量问题由商家承担运费，无理由退货可使用运费险或自行承担。","category":"refund"}
+{"question":"请问一下，退货寄回的运费是由谁承担的？怎么解决？","answer":"质量问题由商家承担运费，无理由退货可使用运费险或自行承担。","category":"refund"}
+{"question":"请问一下，退货寄回的运费是由谁承担的？能帮忙看下吗？","answer":"质量问题由商家承担运费，无理由退货可使用运费险或自行承担。","category":"refund"}
+{"question":"请问一下，退货寄回的运费是由谁承担的？谢谢了","answer":"质量问题由商家承担运费，无理由退货可使用运费险或自行承担。","category":"refund"}
+{"question":"请问一下，错拍了多件商品怎么申请部分退款？","answer":"在售后入口勾选需要退回的商品数量提交部分退款即可。","category":"refund"}
+{"question":"请问一下，错拍了多件商品怎么申请部分退款？谢谢","answer":"在售后入口勾选需要退回的商品数量提交部分退款即可。","category":"refund"}
+{"question":"请问一下，错拍了多件商品怎么申请部分退款？请尽快回复","answer":"在售后入口勾选需要退回的商品数量提交部分退款即可。","category":"refund"}
+{"question":"请问一下，错拍了多件商品怎么申请部分退款？在线等","answer":"在售后入口勾选需要退回的商品数量提交部分退款即可。","category":"refund"}
+{"question":"请问一下，错拍了多件商品怎么申请部分退款？麻烦处理下","answer":"在售后入口勾选需要退回的商品数量提交部分退款即可。","category":"refund"}
+{"question":"请问一下，错拍了多件商品怎么申请部分退款？怎么解决？","answer":"在售后入口勾选需要退回的商品数量提交部分退款即可。","category":"refund"}
+{"question":"请问一下，错拍了多件商品怎么申请部分退款？能帮忙看下吗？","answer":"在售后入口勾选需要退回的商品数量提交部分退款即可。","category":"refund"}
+{"question":"请问一下，你们客服态度太差了，我要投诉到底！","answer":"非常抱歉给您带来不佳体验，已升级至投诉专员并在 2 小时内回电处理。","category":"complaint"}
+{"question":"请问一下，你们客服态度太差了，我要投诉到底！谢谢","answer":"非常抱歉给您带来不佳体验，已升级至投诉专员并在 2 小时内回电处理。","category":"complaint"}
+{"question":"请问一下，你们客服态度太差了，我要投诉到底！请尽快回复","answer":"非常抱歉给您带来不佳体验，已升级至投诉专员并在 2 小时内回电处理。","category":"complaint"}
+{"question":"请问一下，你们客服态度太差了，我要投诉到底！在线等","answer":"非常抱歉给您带来不佳体验，已升级至投诉专员并在 2 小时内回电处理。","category":"complaint"}
+{"question":"请问一下，你们客服态度太差了，我要投诉到底！麻烦处理下","answer":"非常抱歉给您带来不佳体验，已升级至投诉专员并在 2 小时内回电处理。","category":"complaint"}
+{"question":"请问一下，你们客服态度太差了，我要投诉到底！怎么解决？","answer":"非常抱歉给您带来不佳体验，已升级至投诉专员并在 2 小时内回电处理。","category":"complaint"}
+{"question":"请问一下，你们客服态度太差了，我要投诉到底！能帮忙看下吗？","answer":"非常抱歉给您带来不佳体验，已升级至投诉专员并在 2 小时内回电处理。","category":"complaint"}
+{"question":"请问一下，你们客服态度太差了，我要投诉到底！谢谢了","answer":"非常抱歉给您带来不佳体验，已升级至投诉专员并在 2 小时内回电处理。","category":"complaint"}
+{"question":"请问一下，商品收到就是破损的而且一直不处理，我要维权投诉！","answer":"十分抱歉，请上传破损照片，我们将优先为您安排补发或全额赔付。","category":"complaint"}
+{"question":"请问一下，商品收到就是破损的而且一直不处理，我要维权投诉！谢谢","answer":"十分抱歉，请上传破损照片，我们将优先为您安排补发或全额赔付。","category":"complaint"}
+{"question":"请问一下，商品收到就是破损的而且一直不处理，我要维权投诉！请尽快回复","answer":"十分抱歉，请上传破损照片，我们将优先为您安排补发或全额赔付。","category":"complaint"}
+{"question":"请问一下，商品收到就是破损的而且一直不处理，我要维权投诉！在线等","answer":"十分抱歉，请上传破损照片，我们将优先为您安排补发或全额赔付。","category":"complaint"}
+{"question":"请问一下，商品收到就是破损的而且一直不处理，我要维权投诉！麻烦处理下","answer":"十分抱歉，请上传破损照片，我们将优先为您安排补发或全额赔付。","category":"complaint"}
+{"question":"请问一下，商品收到就是破损的而且一直不处理，我要维权投诉！怎么解决？","answer":"十分抱歉，请上传破损照片，我们将优先为您安排补发或全额赔付。","category":"complaint"}
+{"question":"请问一下，商品收到就是破损的而且一直不处理，我要维权投诉！能帮忙看下吗？","answer":"十分抱歉，请上传破损照片，我们将优先为您安排补发或全额赔付。","category":"complaint"}
+{"question":"请问一下，商品收到就是破损的而且一直不处理，我要维权投诉！谢谢了","answer":"十分抱歉，请上传破损照片，我们将优先为您安排补发或全额赔付。","category":"complaint"}
+{"question":"请问一下，虚假宣传发货时间，拖延一周不发货我要举报！","answer":"已记录您的延迟发货投诉，系统将按平台规则为您发放延迟赔付红包。","category":"complaint"}
+{"question":"请问一下，虚假宣传发货时间，拖延一周不发货我要举报！谢谢","answer":"已记录您的延迟发货投诉，系统将按平台规则为您发放延迟赔付红包。","category":"complaint"}
+{"question":"请问一下，虚假宣传发货时间，拖延一周不发货我要举报！请尽快回复","answer":"已记录您的延迟发货投诉，系统将按平台规则为您发放延迟赔付红包。","category":"complaint"}
+{"question":"请问一下，虚假宣传发货时间，拖延一周不发货我要举报！在线等","answer":"已记录您的延迟发货投诉，系统将按平台规则为您发放延迟赔付红包。","category":"complaint"}
+{"question":"请问一下，虚假宣传发货时间，拖延一周不发货我要举报！麻烦处理下","answer":"已记录您的延迟发货投诉，系统将按平台规则为您发放延迟赔付红包。","category":"complaint"}
+{"question":"请问一下，虚假宣传发货时间，拖延一周不发货我要举报！怎么解决？","answer":"已记录您的延迟发货投诉，系统将按平台规则为您发放延迟赔付红包。","category":"complaint"}
+{"question":"请问一下，虚假宣传发货时间，拖延一周不发货我要举报！能帮忙看下吗？","answer":"已记录您的延迟发货投诉，系统将按平台规则为您发放延迟赔付红包。","category":"complaint"}
+{"question":"请问一下，虚假宣传发货时间，拖延一周不发货我要举报！谢谢了","answer":"已记录您的延迟发货投诉，系统将按平台规则为您发放延迟赔付红包。","category":"complaint"}
+{"question":"请问一下，多次反馈质量问题无人跟进，要求主管回电！","answer":"已为您标记加急客诉工单，客服主管将在 1 小时内致电跟进。","category":"complaint"}
+{"question":"请问一下，多次反馈质量问题无人跟进，要求主管回电！谢谢","answer":"已为您标记加急客诉工单，客服主管将在 1 小时内致电跟进。","category":"complaint"}
+{"question":"请问一下，多次反馈质量问题无人跟进，要求主管回电！请尽快回复","answer":"已为您标记加急客诉工单，客服主管将在 1 小时内致电跟进。","category":"complaint"}
+{"question":"请问一下，多次反馈质量问题无人跟进，要求主管回电！在线等","answer":"已为您标记加急客诉工单，客服主管将在 1 小时内致电跟进。","category":"complaint"}
+{"question":"请问一下，多次反馈质量问题无人跟进，要求主管回电！麻烦处理下","answer":"已为您标记加急客诉工单，客服主管将在 1 小时内致电跟进。","category":"complaint"}
+{"question":"请问一下，多次反馈质量问题无人跟进，要求主管回电！怎么解决？","answer":"已为您标记加急客诉工单，客服主管将在 1 小时内致电跟进。","category":"complaint"}
+{"question":"请问一下，多次反馈质量问题无人跟进，要求主管回电！能帮忙看下吗？","answer":"已为您标记加急客诉工单，客服主管将在 1 小时内致电跟进。","category":"complaint"}
+{"question":"请问一下，多次反馈质量问题无人跟进，要求主管回电！谢谢了","answer":"已为您标记加急客诉工单，客服主管将在 1 小时内致电跟进。","category":"complaint"}
+{"question":"请问一下，快递把东西摔坏了你们还推诿责任，太令人失望了！","answer":"非常抱歉，我们绝不推诿，已立即启动先行赔付流程为您处理。","category":"complaint"}
+{"question":"请问一下，快递把东西摔坏了你们还推诿责任，太令人失望了！谢谢","answer":"非常抱歉，我们绝不推诿，已立即启动先行赔付流程为您处理。","category":"complaint"}
+{"question":"请问一下，快递把东西摔坏了你们还推诿责任，太令人失望了！请尽快回复","answer":"非常抱歉，我们绝不推诿，已立即启动先行赔付流程为您处理。","category":"complaint"}
+{"question":"请问一下，快递把东西摔坏了你们还推诿责任，太令人失望了！在线等","answer":"非常抱歉，我们绝不推诿，已立即启动先行赔付流程为您处理。","category":"complaint"}
+{"question":"请问一下，快递把东西摔坏了你们还推诿责任，太令人失望了！麻烦处理下","answer":"非常抱歉，我们绝不推诿，已立即启动先行赔付流程为您处理。","category":"complaint"}
+{"question":"请问一下，快递把东西摔坏了你们还推诿责任，太令人失望了！怎么解决？","answer":"非常抱歉，我们绝不推诿，已立即启动先行赔付流程为您处理。","category":"complaint"}
+{"question":"请问一下，快递把东西摔坏了你们还推诿责任，太令人失望了！能帮忙看下吗？","answer":"非常抱歉，我们绝不推诿，已立即启动先行赔付流程为您处理。","category":"complaint"}
+{"question":"请问一下，快递把东西摔坏了你们还推诿责任，太令人失望了！谢谢了","answer":"非常抱歉，我们绝不推诿，已立即启动先行赔付流程为您处理。","category":"complaint"}
+{"question":"请问一下，价格刚买完就大降价还不给保价，我要投诉欺诈！","answer":"理解您的心情，已为您登记价保复核工单，专员将在今日内联系核实差价。","category":"complaint"}
+{"question":"请问一下，价格刚买完就大降价还不给保价，我要投诉欺诈！谢谢","answer":"理解您的心情，已为您登记价保复核工单，专员将在今日内联系核实差价。","category":"complaint"}
+{"question":"请问一下，价格刚买完就大降价还不给保价，我要投诉欺诈！请尽快回复","answer":"理解您的心情，已为您登记价保复核工单，专员将在今日内联系核实差价。","category":"complaint"}
+{"question":"请问一下，价格刚买完就大降价还不给保价，我要投诉欺诈！在线等","answer":"理解您的心情，已为您登记价保复核工单，专员将在今日内联系核实差价。","category":"complaint"}
+{"question":"请问一下，价格刚买完就大降价还不给保价，我要投诉欺诈！麻烦处理下","answer":"理解您的心情，已为您登记价保复核工单，专员将在今日内联系核实差价。","category":"complaint"}

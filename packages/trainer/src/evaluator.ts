@@ -43,10 +43,18 @@ export async function evaluateIntentClassifier(
     complaint: 0,
   };
 
+  const confusionMatrix: Record<QaCategory, Record<QaCategory, number>> = {
+    consultation: { consultation: 0, logistics: 0, refund: 0, complaint: 0 },
+    logistics: { consultation: 0, logistics: 0, refund: 0, complaint: 0 },
+    refund: { consultation: 0, logistics: 0, refund: 0, complaint: 0 },
+    complaint: { consultation: 0, logistics: 0, refund: 0, complaint: 0 },
+  };
+
   let correct = 0;
 
   for (const sample of testSamples) {
     const predicted = await predictCategory(sample.question);
+    confusionMatrix[sample.category][predicted] += 1;
     if (predicted === sample.category) {
       correct += 1;
       tp[sample.category] += 1;
@@ -57,6 +65,7 @@ export async function evaluateIntentClassifier(
   }
 
   const perClassRecall: Partial<Record<QaCategory, number>> = {};
+  const perClassF1: Partial<Record<QaCategory, number>> = {};
   let f1Sum = 0;
   let activeClasses = 0;
 
@@ -73,6 +82,7 @@ export async function evaluateIntentClassifier(
         : 0;
 
     perClassRecall[cat] = Number(recall.toFixed(4));
+    perClassF1[cat] = Number(f1.toFixed(4));
     f1Sum += f1;
   }
 
@@ -81,6 +91,8 @@ export async function evaluateIntentClassifier(
     macroF1:
       activeClasses > 0 ? Number((f1Sum / activeClasses).toFixed(4)) : 0,
     perClassRecall,
+    perClassF1,
+    confusionMatrix,
     evaluatedCount: testSamples.length,
   };
 }
